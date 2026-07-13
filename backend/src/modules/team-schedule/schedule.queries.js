@@ -40,4 +40,25 @@ async function getUsersByIds(client, userIds) {
   return result.rows;
 }
 
-module.exports = { createSchedule, addParticipants, findTeamMemberIds, getUsersByIds };
+async function findSchedulesByRange(client, teamId, rangeStart, rangeEnd) {
+  const result = await client.query(
+    `SELECT id, team_id AS "teamId", title, description,
+            start_at AS "startAt", end_at AS "endAt",
+            created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+       FROM schedules
+      WHERE team_id = $1
+        AND start_at < $3
+        AND end_at > $2
+      ORDER BY start_at ASC`,
+    [teamId, rangeStart, rangeEnd],
+  );
+  return result.rows;
+}
+
+module.exports = {
+  createSchedule,
+  addParticipants,
+  findTeamMemberIds,
+  getUsersByIds,
+  findSchedulesByRange,
+};

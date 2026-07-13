@@ -22,4 +22,20 @@ router.post('/:teamId/schedules', teamAccessMiddleware, async (req, res, next) =
   }
 });
 
+// BE-14: 팀 일정 월/주/일 조회 (BR-03, BR-16)
+router.get('/:teamId/schedules', teamAccessMiddleware, async (req, res, next) => {
+  try {
+    const { view, date } = req.query;
+    const schedules = await scheduleService.getSchedules(
+      req.teamMembership.role,
+      req.teamMembership.teamId,
+      view,
+      date,
+    );
+    res.status(200).json(schedules);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
