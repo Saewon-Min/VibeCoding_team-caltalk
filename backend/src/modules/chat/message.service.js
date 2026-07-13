@@ -37,4 +37,52 @@ async function createSystemMessage(client, teamId, content) {
   });
 }
 
-module.exports = { createMessage, createSystemMessage };
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// BE-17: chat 모듈 전용 최소 날짜 검증. team-schedule의 parseDateOnly/computeDateRange를
+// 의도적으로 import하지 않는다 — 도메인이 무관한 두 모듈을 결합시키지 않기 위함이며,
+// chat은 view 구분 없이 "day" 범위 하나만 필요해 로직도 더 단순하다.
+function computeDayRange(date) {
+  if (typeof date !== 'string' || !DATE_PATTERN.test(date)) {
+    throw new BadRequestError('date는 YYYY-MM-DD 형식이어야 합니다');
+  }
+  const [y, m, d] = date.split('-').map(Number);
+  const rangeStart = new Date(Date.UTC(y, m - 1, d));
+  if (
+    rangeStart.getUTCFullYear() !== y ||
+    rangeStart.getUTCMonth() !== m - 1 ||
+    rangeStart.getUTCDate() !== d
+  ) {
+    throw new BadRequestError('date가 유효한 날짜가 아닙니다');
+  }
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
+  return { rangeStart, rangeEnd };
+}
+
+// BE-17: since는 선택 값. 없으면 null을 반환해 쿼리 계층에서 필터를 생략하게 한다.
+function parseSince(since) {
+  if (since === undefined || since === null || since === '') {
+    return null;
+  }
+  if (typeof since !== 'string') {
+    throw new BadRequestError('since는 ISO 8601 날짜/시각 문자열이어야 합니다');
+  }
+  const parsed = new Date(since);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new BadRequestError('since가 유효한 날짜/시각이 아닙니다');
+  }
+  return parsed;
+}
+
+// BE-17 / BR-06 / BR-16 / SC-12: date(필수) 하루 범위 내 메시지를 created_at 오름차순 반환.
+// since(선택)가 있으면 그 범위 안에서 created_at > since로 추가 필터링한다(폴링용, strictly greater).
+// teamId는 teamAccessMiddleware가 검증한 값을 신뢰한다(BR-16). 과거 일자 조회도 동일 로직으로
+// 전체 이력을 반환한다(BR-06).
+async function getMessages(teamId, date, since) {
+  const { rangeStart, rangeEnd } = computeDayRange(date);
+  const sinceDate = parseSince(since);
+  return messageQueries.findMessagesByTeamAndDate(pool, teamId, rangeStart, rangeEnd, sinceDate);
+}
+
+module.exports = { createMessage, createSystemMessage, getMessages };
