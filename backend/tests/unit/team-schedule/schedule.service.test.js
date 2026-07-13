@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { pool } = require('../../../src/db/pool');
 const scheduleService = require('../../../src/modules/team-schedule/schedule.service');
+const teamAccessMiddleware = require('../../../src/middleware/team-access.middleware');
 
 async function createUser(name, email) {
   const result = await pool.query(
@@ -57,8 +58,8 @@ describe('schedule.service — BE-12 / BR-02 / BR-07 팀 일정 생성', () => {
     for (const id of createdUserIds) {
       await pool.query('DELETE FROM users WHERE id = $1', [id]);
     }
-    // 이 파일에는 하단에 BE-13 describe 블록이 이어지며 동일한 pool 싱글턴을 공유하므로,
-    // pool.end()는 파일 내 마지막 describe 블록의 afterAll에서만 호출한다.
+    // 이 파일에는 하단에 BE-13/BE-14/BE-15 describe 블록이 이어지며 동일한 pool 싱글턴을
+    // 공유하므로, pool.end()는 파일 내 마지막 describe 블록의 afterAll에서만 호출한다.
   });
 
   async function setupTeam({ memberCount = 2 } = {}) {
@@ -231,7 +232,6 @@ describe('schedule.service — BE-13 일정 수정/삭제 (BR-02, BR-03)', () =>
     for (const id of createdUserIds) {
       await pool.query('DELETE FROM users WHERE id = $1', [id]);
     }
-    await pool.end();
   });
 
   async function setupTeam({ memberCount = 2 } = {}) {
@@ -596,5 +596,293 @@ describe('schedule.service — BE-13 일정 수정/삭제 (BR-02, BR-03)', () =>
 
       expect(await scheduleExists(created.id)).toBe(true);
     });
+  });
+});
+
+describe('schedule.service — BE-14 월/주/일 일정 조회 (BR-03, BR-16)', () => {
+  const createdUserIds = [];
+  const createdTeamIds = [];
+
+  afterAll(async () => {
+    for (const teamId of createdTeamIds) {
+      await cleanupTeam(teamId);
+    }
+    for (const id of createdUserIds) {
+      await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+  });
+
+  async function setupTeam({ memberCount = 2 } = {}) {
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const leaderId = await createUser('팀장', `leader-${suffix}@test.com`);
+    createdUserIds.push(leaderId);
+    const teamId = await createTeamWithLeader(`조회테스트팀-${suffix}`, leaderId);
+    createdTeamIds.push(teamId);
+
+    const memberIds = [];
+    for (let i = 0; i < memberCount; i += 1) {
+      const memberId = await createUser(`팀원${i}`, `viewmember${i}-${suffix}@test.com`);
+      createdUserIds.push(memberId);
+      await addMembership(teamId, memberId, 'member');
+      memberIds.push(memberId);
+    }
+
+    return { leaderId, teamId, memberIds };
+  }
+
+  test('월경계에 걸친 일정이 두 인접 월 조회 모두에 포함된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const title = `월경계일정-${Date.now()}`;
+
+    await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title,
+      startAt: '2026-07-31T15:00:00.000Z',
+      endAt: '2026-08-01T01:00:00.000Z',
+    });
+
+    const julyResult = await scheduleService.getSchedules('leader', teamId, 'month', '2026-07-10');
+    const augResult = await scheduleService.getSchedules('leader', teamId, 'month', '2026-08-05');
+
+    expect(julyResult.some((s) => s.title === title)).toBe(true);
+    expect(augResult.some((s) => s.title === title)).toBe(true);
+  });
+
+  test('주경계(월요일 시작)에 걸친 일정이 인접한 두 주 조회 모두에 포함되고 수요일 조회도 같은 주를 반환한다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const title = `주경계일정-${Date.now()}`;
+
+    await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title,
+      startAt: '2026-07-19T23:30:00.000Z',
+      endAt: '2026-07-20T00:30:00.000Z',
+    });
+
+    const thisWeek = await scheduleService.getSchedules('leader', teamId, 'week', '2026-07-13');
+    const nextWeek = await scheduleService.getSchedules('leader', teamId, 'week', '2026-07-20');
+    const midWeek = await scheduleService.getSchedules('leader', teamId, 'week', '2026-07-15');
+
+    expect(thisWeek.some((s) => s.title === title)).toBe(true);
+    expect(nextWeek.some((s) => s.title === title)).toBe(true);
+    expect(midWeek.some((s) => s.title === title)).toBe(true);
+  });
+
+  test('일경계에 걸친 일정이 인접한 두 날짜 조회 모두에 포함된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const title = `일경계일정-${Date.now()}`;
+
+    await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title,
+      startAt: '2026-07-14T23:00:00.000Z',
+      endAt: '2026-07-15T01:00:00.000Z',
+    });
+
+    const day14 = await scheduleService.getSchedules('leader', teamId, 'day', '2026-07-14');
+    const day15 = await scheduleService.getSchedules('leader', teamId, 'day', '2026-07-15');
+
+    expect(day14.some((s) => s.title === title)).toBe(true);
+    expect(day15.some((s) => s.title === title)).toBe(true);
+  });
+
+  test('canEdit은 leader 조회 시 전부 true, member 조회 시 전부 false이며 participants 필드는 없다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+
+    await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: 'canEdit 검증 일정 1',
+      startAt: '2026-09-01T09:00:00.000Z',
+      endAt: '2026-09-01T10:00:00.000Z',
+    });
+    await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: 'canEdit 검증 일정 2',
+      startAt: '2026-09-02T09:00:00.000Z',
+      endAt: '2026-09-02T10:00:00.000Z',
+    });
+
+    const leaderView = await scheduleService.getSchedules('leader', teamId, 'month', '2026-09-15');
+    const memberView = await scheduleService.getSchedules('member', teamId, 'month', '2026-09-15');
+
+    expect(leaderView.length).toBeGreaterThanOrEqual(2);
+    expect(leaderView.every((s) => s.canEdit === true)).toBe(true);
+    expect(memberView.length).toBeGreaterThanOrEqual(2);
+    expect(memberView.every((s) => s.canEdit === false)).toBe(true);
+
+    leaderView.forEach((item) => {
+      expect(item).not.toHaveProperty('participants');
+    });
+  });
+
+  test('범위 밖(다른 달) 일정은 결과에 포함되지 않는다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const outOfRangeTitle = `범위밖일정-${Date.now()}`;
+
+    await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: outOfRangeTitle,
+      startAt: '2026-10-15T09:00:00.000Z',
+      endAt: '2026-10-15T10:00:00.000Z',
+    });
+
+    const julyResult = await scheduleService.getSchedules('leader', teamId, 'month', '2026-07-10');
+    expect(julyResult.some((s) => s.title === outOfRangeTitle)).toBe(false);
+  });
+
+  test('다른 팀의 일정이 섞여 나오지 않는다', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+    const sameDate = '2026-11-10T09:00:00.000Z';
+    const sameDateEnd = '2026-11-10T10:00:00.000Z';
+    const titleA = `팀A일정-${Date.now()}`;
+    const titleB = `팀B일정-${Date.now()}`;
+
+    await scheduleService.createSchedule('leader', teamA.teamId, teamA.leaderId, {
+      title: titleA,
+      startAt: sameDate,
+      endAt: sameDateEnd,
+    });
+    await scheduleService.createSchedule('leader', teamB.teamId, teamB.leaderId, {
+      title: titleB,
+      startAt: sameDate,
+      endAt: sameDateEnd,
+    });
+
+    const teamAResult = await scheduleService.getSchedules('leader', teamA.teamId, 'month', '2026-11-05');
+    const teamBResult = await scheduleService.getSchedules('leader', teamB.teamId, 'month', '2026-11-05');
+
+    expect(teamAResult.every((s) => s.teamId === teamA.teamId)).toBe(true);
+    expect(teamAResult.some((s) => s.title === titleB)).toBe(false);
+    expect(teamBResult.every((s) => s.teamId === teamB.teamId)).toBe(true);
+    expect(teamBResult.some((s) => s.title === titleA)).toBe(false);
+  });
+
+  test('view가 유효하지 않으면 400을 반환한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      scheduleService.getSchedules('leader', teamId, 'invalid', '2026-07-10'),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test('존재하지 않는 날짜(2026-13-40)이면 400을 반환한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      scheduleService.getSchedules('leader', teamId, 'month', '2026-13-40'),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test('날짜 형식이 잘못되면(2026/07/10) 400을 반환한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      scheduleService.getSchedules('leader', teamId, 'month', '2026/07/10'),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test('date가 생략되면 400을 반환한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      scheduleService.getSchedules('leader', teamId, 'month', undefined),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
+
+describe('team-access — BR-16 접근제어 (BE-15)', () => {
+  const createdUserIds = [];
+  const createdTeamIds = [];
+
+  afterAll(async () => {
+    for (const teamId of createdTeamIds) {
+      await cleanupTeam(teamId);
+    }
+    for (const id of createdUserIds) {
+      await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+    await pool.end();
+  });
+
+  async function setupTeam({ memberCount = 2 } = {}) {
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const leaderId = await createUser('팀장', `access-leader-${suffix}@test.com`);
+    createdUserIds.push(leaderId);
+    const teamId = await createTeamWithLeader(`접근제어테스트팀-${suffix}`, leaderId);
+    createdTeamIds.push(teamId);
+
+    const memberIds = [];
+    for (let i = 0; i < memberCount; i += 1) {
+      const memberId = await createUser(`팀원${i}`, `access-member${i}-${suffix}@test.com`);
+      createdUserIds.push(memberId);
+      await addMembership(teamId, memberId, 'member');
+      memberIds.push(memberId);
+    }
+
+    return { leaderId, teamId, memberIds };
+  }
+
+  test('teamAccessMiddleware — 소속 사용자는 통과하며 req.teamMembership이 세팅된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+
+    const req = { params: { teamId: String(teamId) }, user: { id: leaderId } };
+    const res = {};
+    const next = jest.fn();
+
+    await teamAccessMiddleware(req, res, next);
+
+    // teams.id는 bigserial이라 pg 드라이버가 setupTeam()의 teamId를 문자열로 반환하지만,
+    // teamAccessMiddleware는 req.params.teamId를 Number()로 변환해 세팅하므로 숫자로 비교한다.
+    expect(next).toHaveBeenCalledWith();
+    expect(req.teamMembership).toEqual({ teamId: Number(teamId), role: 'leader' });
+  });
+
+  test('teamAccessMiddleware — 비소속 사용자는 403(ForbiddenError)으로 거부된다', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const req = { params: { teamId: String(teamA.teamId) }, user: { id: teamB.leaderId } };
+    const res = {};
+    const next = jest.fn();
+
+    await teamAccessMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403 }));
+    expect(req.teamMembership).toBeUndefined();
+  });
+
+  test('requireScheduleTeamAccess — 소속 사용자(리더/팀원)는 scheduleId만으로 teamId/role을 정확히 반환한다', async () => {
+    const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 1 });
+    const memberId = memberIds[0];
+
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '접근제어 검증 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+    });
+
+    const leaderAccess = await teamAccessMiddleware.requireScheduleTeamAccess(schedule.id, leaderId);
+    expect(leaderAccess).toEqual({ teamId, role: 'leader' });
+
+    const memberAccess = await teamAccessMiddleware.requireScheduleTeamAccess(schedule.id, memberId);
+    expect(memberAccess).toEqual({ teamId, role: 'member' });
+  });
+
+  test('requireScheduleTeamAccess — 다른 팀 소속 사용자는 scheduleId만으로도 403(ForbiddenError)으로 거부된다', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const scheduleA = await scheduleService.createSchedule('leader', teamA.teamId, teamA.leaderId, {
+      title: 'teamA 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+    });
+
+    await expect(
+      teamAccessMiddleware.requireScheduleTeamAccess(scheduleA.id, teamB.leaderId),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  test('requireScheduleTeamAccess — 존재하지 않는 scheduleId도 403(ForbiddenError)으로 거부된다', async () => {
+    const { leaderId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      teamAccessMiddleware.requireScheduleTeamAccess(999999999, leaderId),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 });
