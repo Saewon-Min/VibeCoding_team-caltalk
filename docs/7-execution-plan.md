@@ -46,197 +46,197 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### DB 트랙
 
 **DB-01. PostgreSQL 연결 풀 및 환경설정**
-- [ ] `backend/src/db/pool.js`가 `pg.Pool`을 생성하고 `.env`의 DB 접속정보로 초기화된다.
-- [ ] `backend/.env.example`에 `DB_HOST/PORT/NAME/USER/PASSWORD`가 값 없이 포함된다.
-- [ ] 앱 기동 시 헬스체크 쿼리로 연결 성공 여부가 로그로 확인된다.
-- [ ] `.env`는 `.gitignore`에 포함된다.
-- 의존성: [ ] 없음(최초 작업)
+- [x] `backend/src/db/pool.js`가 `pg.Pool`을 생성하고 `.env`의 DB 접속정보로 초기화된다.
+- [x] `backend/.env.example`에 `DB_HOST/PORT/NAME/USER/PASSWORD`가 값 없이 포함된다.
+- [x] 앱 기동 시 헬스체크 쿼리로 연결 성공 여부가 로그로 확인된다.
+- [x] `.env`는 `.gitignore`에 포함된다.
+- 의존성: [x] 없음(최초 작업)
 
 **DB-02. 마이그레이션 실행 체계 구축**
-- [ ] `backend/src/db/migrations/`에 순번 기반 파일 네이밍 규칙이 문서화되어 있다.
-- [ ] `npm run migrate`(up) / `npm run migrate:undo`(최소 1단계 롤백) 스크립트가 존재한다.
-- [ ] 빈 DB에서 `npm run migrate` 1회 실행으로 전체 스키마가 오류 없이 생성된다.
-- 의존성: [ ] DB-01
+- [x] `backend/src/db/migrations/`에 순번 기반 파일 네이밍 규칙이 문서화되어 있다.
+- [x] `npm run migrate`(up) / `npm run migrate:undo`(최소 1단계 롤백) 스크립트가 존재한다.
+- [x] 빈 DB에서 `npm run migrate` 1회 실행으로 전체 스키마가 오류 없이 생성된다.
+- 의존성: [x] DB-01
 
 **DB-03. users 테이블 (ENT-01)**
-- [ ] `email UNIQUE NOT NULL`, `password_hash NOT NULL` (평문 비밀번호 컬럼 없음).
-- [ ] 중복 이메일 INSERT 시 `unique_violation` 발생을 확인한다.
-- 의존성: [ ] DB-02 · 근거: ENT-01, BR-01, BR-14
+- [x] `email UNIQUE NOT NULL`, `password_hash NOT NULL` (평문 비밀번호 컬럼 없음).
+- [x] 중복 이메일 INSERT 시 `unique_violation` 발생을 확인한다.
+- 의존성: [x] DB-02 · 근거: ENT-01, BR-01, BR-14
 
 **DB-04. teams 테이블 (ENT-02)**
-- [ ] `created_by`가 `users.id` FK로 설정되어 팀 생성자를 식별한다(BR-15 지원).
-- [ ] 존재하지 않는 `user_id`로 INSERT 시 FK 위반을 확인한다.
-- 의존성: [ ] DB-03 · 근거: ENT-02, BR-15
+- [x] `created_by`가 `users.id` FK로 설정되어 팀 생성자를 식별한다(BR-15 지원).
+- [x] 존재하지 않는 `user_id`로 INSERT 시 FK 위반을 확인한다.
+- 의존성: [x] DB-03 · 근거: ENT-02, BR-15
 
 **DB-05. team_memberships 테이블 (ENT-03, BR-08)**
-- [ ] `UNIQUE(team_id, user_id)` — 동일 팀 중복 소속 차단.
-- [ ] `role CHECK IN ('leader','member')`.
-- [ ] `user_id` 단독 유니크는 없음 — 한 사용자가 여러 팀에 다른 역할로 소속 가능함을 스키마로 확인(BR-08).
-- 의존성: [ ] DB-04 · 근거: ENT-03, BR-08, BR-14
+- [x] `UNIQUE(team_id, user_id)` — 동일 팀 중복 소속 차단.
+- [x] `role CHECK IN ('leader','member')`.
+- [x] `user_id` 단독 유니크는 없음 — 한 사용자가 여러 팀에 다른 역할로 소속 가능함을 스키마로 확인(BR-08).
+- 의존성: [x] DB-04 · 근거: ENT-03, BR-08, BR-14
 
 **DB-06. ~~BR-09 트리거~~ → 채택하지 않음**
 - 사유: §1.1. BR-09(팀장 최소 1인 유지)는 **BE-10**(Service 계층) + **BE-11**(단위 테스트)이 단독 소유한다.
 
 **DB-07. schedules 테이블 (ENT-04, BR-07)**
-- [ ] `team_id NOT NULL FK` — 다대다 연결 테이블 없이 단일 FK로 팀 귀속 보장(BR-07).
-- [ ] `CHECK (end_time > start_time)`.
-- [ ] `end_time <= start_time` INSERT 시 `check_violation` 확인.
-- [ ] 역할 기반 쓰기 권한(BR-02)은 이 테이블 책임이 아니라 Service 계층(BE-12) 책임임을 주석으로 명시.
-- 의존성: [ ] DB-04 · 근거: ENT-04, BR-02(Service 책임 명시), BR-07
+- [x] `team_id NOT NULL FK` — 다대다 연결 테이블 없이 단일 FK로 팀 귀속 보장(BR-07).
+- [x] `CHECK (end_time > start_time)`.
+- [x] `end_time <= start_time` INSERT 시 `check_violation` 확인.
+- [x] 역할 기반 쓰기 권한(BR-02)은 이 테이블 책임이 아니라 Service 계층(BE-12) 책임임을 주석으로 명시.
+- 의존성: [x] DB-04 · 근거: ENT-04, BR-02(Service 책임 명시), BR-07
 
 **DB-08. schedule_participants 테이블 (ENT-05)**
-- [ ] `UNIQUE(schedule_id, user_id)`.
-- [ ] `schedule_id ON DELETE CASCADE` — 일정 삭제 시 참여자 레코드 함께 삭제(SC-05).
-- 의존성: [ ] DB-07 · 근거: ENT-05, SC-03, SC-05
+- [x] `UNIQUE(schedule_id, user_id)`.
+- [x] `schedule_id ON DELETE CASCADE` — 일정 삭제 시 참여자 레코드 함께 삭제(SC-05).
+- 의존성: [x] DB-07 · 근거: ENT-05, SC-03, SC-05
 
 **DB-09. messages 테이블 (ENT-06)**
-- [ ] `message_type CHECK IN ('general','change_request','system')`.
-- [ ] `CHECK ((message_type='system' AND author_id IS NULL) OR (message_type<>'system' AND author_id IS NOT NULL))` — 시스템 메시지만 작성자 없음을 DB 레벨로 강제.
-- [ ] `team_id NOT NULL FK` — 모든 메시지가 팀에 귀속(BR-16 전제).
-- 의존성: [ ] DB-04 · 근거: ENT-06, BR-06(데이터 형태만), BR-16
+- [x] `message_type CHECK IN ('general','change_request','system')`.
+- [x] `CHECK ((message_type='system' AND author_id IS NULL) OR (message_type<>'system' AND author_id IS NOT NULL))` — 시스템 메시지만 작성자 없음을 DB 레벨로 강제.
+- [x] `team_id NOT NULL FK` — 모든 메시지가 팀에 귀속(BR-16 전제).
+- 의존성: [x] DB-04 · 근거: ENT-06, BR-06(데이터 형태만), BR-16
 
 **DB-10. schedule_change_requests 테이블 (ENT-07)**
-- [ ] `message_id NOT NULL UNIQUE FK → messages.id` — 모든 변경요청이 정확히 1개의 채팅 메시지와 1:1 연결(BR-04 구조적 전제).
-- [ ] `status CHECK IN ('pending','approved','rejected','cancelled') DEFAULT 'pending'`.
-- [ ] `processor_id`, `processed_at`은 nullable.
-- 의존성: [ ] DB-07, DB-09 · 근거: ENT-07, BR-04, BR-05
+- [x] `message_id NOT NULL UNIQUE FK → messages.id` — 모든 변경요청이 정확히 1개의 채팅 메시지와 1:1 연결(BR-04 구조적 전제).
+- [x] `status CHECK IN ('pending','approved','rejected','cancelled') DEFAULT 'pending'`.
+- [x] `processor_id`, `processed_at`은 nullable.
+- 의존성: [x] DB-07, DB-09 · 근거: ENT-07, BR-04, BR-05
 
 **DB-11. 인덱스 설계**
-- [ ] `idx_team_memberships_user_id`, `idx_schedules_team_id_start_time`, `idx_schedule_participants_schedule_id`, `idx_schedule_participants_user_id`, `idx_messages_team_id_created_at`, `idx_change_requests_schedule_id_status`.
-- [ ] `EXPLAIN`으로 각 인덱스가 대응 쿼리에서 Index Scan으로 선택됨을 확인.
-- 의존성: [ ] DB-05, DB-07, DB-08, DB-09, DB-10 · 근거: BR-03, BR-06, BR-11, BR-16
+- [x] `idx_team_memberships_user_id`, `idx_schedules_team_id_start_time`, `idx_schedule_participants_schedule_id`, `idx_schedule_participants_user_id`, `idx_messages_team_id_created_at`, `idx_change_requests_schedule_id_status`.
+- [x] `EXPLAIN`으로 각 인덱스가 대응 쿼리에서 Index Scan으로 선택됨을 확인.
+- 의존성: [x] DB-05, DB-07, DB-08, DB-09, DB-10 · 근거: BR-03, BR-06, BR-11, BR-16
 
 **DB-12. 시드 데이터 스크립트**
-- [ ] `npm run seed`로 `3-user-scenarios.md` 1.4절의 테크팀/디자인팀, 김철수/이서연/박준영/최유진/정다은, 일정 예시 1~4가 재현된다.
-- [ ] 비밀번호는 DB-03과 동일한 해시 방식으로 저장된다.
-- [ ] 재실행해도 중복 키 오류가 없다(`ON CONFLICT DO NOTHING` 등).
-- 의존성: [ ] DB-03, DB-04, DB-05, DB-07, DB-08 · 근거: SC-01~SC-12(Day5 QA용)
+- [x] `npm run seed`로 `3-user-scenarios.md` 1.4절의 테크팀/디자인팀, 김철수/이서연/박준영/최유진/정다은, 일정 예시 1~4가 재현된다.
+- [x] 비밀번호는 DB-03과 동일한 해시 방식으로 저장된다.
+- [x] 재실행해도 중복 키 오류가 없다(`ON CONFLICT DO NOTHING` 등).
+- 의존성: [x] DB-03, DB-04, DB-05, DB-07, DB-08 · 근거: SC-01~SC-12(Day5 QA용)
 
 #### Backend 트랙
 
 **BE-01. 프로젝트 스캐폴딩**
-- [ ] `backend/src/modules/{auth,team-schedule,chat,change-request}`, `middleware/`, `db/`, `shared/` 디렉토리 생성.
-- [ ] `npm run dev`로 서버 기동, `GET /health` 200 응답.
-- [ ] ESLint + Prettier 설정, `npm run lint` 동작.
-- 의존성: [ ] 없음
+- [x] `backend/src/modules/{auth,team-schedule,chat,change-request}`, `middleware/`, `db/`, `shared/` 디렉토리 생성.
+- [x] `npm run dev`로 서버 기동, `GET /health` 200 응답.
+- [x] ESLint + Prettier 설정, `npm run lint` 동작.
+- 의존성: [x] 없음
 
 **BE-03. 인증 미들웨어 (BR-01)**
-- [ ] 인증 토큰 없이 보호된 라우트 호출 시 401, 데이터 미포함(SC-01 E2).
-- [ ] 유효 토큰이면 `req.user` 채운 뒤 `next()`.
-- [ ] 만료/위조 토큰도 401.
-- 의존성: [ ] BE-01
+- [x] 인증 토큰 없이 보호된 라우트 호출 시 401, 데이터 미포함(SC-01 E2).
+- [x] 유효 토큰이면 `req.user` 채운 뒤 `next()`.
+- [x] 만료/위조 토큰도 401.
+- 의존성: [x] BE-01
 
 **BE-04. 팀 경계 접근 제어 미들웨어 (BR-16)**
-- [ ] `:teamId` 비소속 사용자는 403, 데이터 미포함(SC-04/08/12 E1).
-- [ ] 소속 사용자는 `req.teamMembership`(역할 포함) 채운 뒤 `next()`.
-- [ ] `scheduleId` 등 teamId가 URL에 없는 리소스도 소속 팀 조회 기반으로 검증하는 재사용 가능한 헬퍼 제공.
-- 의존성: [ ] DB-05, BE-03 · 근거: BR-16, SC-04/08/12
+- [x] `:teamId` 비소속 사용자는 403, 데이터 미포함(SC-04/08/12 E1).
+- [x] 소속 사용자는 `req.teamMembership`(역할 포함) 채운 뒤 `next()`.
+- [x] `scheduleId` 등 teamId가 URL에 없는 리소스도 소속 팀 조회 기반으로 검증하는 재사용 가능한 헬퍼 제공.
+- 의존성: [x] DB-05, BE-03 · 근거: BR-16, SC-04/08/12
 
 **BE-05. 공통 에러 핸들러 및 로깅**
-- [ ] 모든 예외가 공통 에러 핸들러로 일관된 JSON 형식 응답.
-- [ ] 401/403/404/409/500 상태 코드가 커스텀 에러 클래스로 매핑.
-- [ ] 처리되지 않은 예외로 서버가 크래시되지 않음.
-- 의존성: [ ] BE-01
+- [x] 모든 예외가 공통 에러 핸들러로 일관된 JSON 형식 응답.
+- [x] 401/403/404/409/500 상태 코드가 커스텀 에러 클래스로 매핑.
+- [x] 처리되지 않은 예외로 서버가 크래시되지 않음.
+- 의존성: [x] BE-01
 
 **BE-06. auth: 회원가입 (BR-01)**
-- [ ] 정상 입력 시 201, 비밀번호는 해시로 저장(DB 직접 확인).
-- [ ] 이메일 형식 오류 400, 중복 이메일 409.
-- [ ] 응답 바디에 비밀번호(해시 포함) 미노출.
-- 의존성: [ ] DB-03, BE-05 · 근거: BR-01, SC-01
+- [x] 정상 입력 시 201, 비밀번호는 해시로 저장(DB 직접 확인).
+- [x] 이메일 형식 오류 400, 중복 이메일 409.
+- [x] 응답 바디에 비밀번호(해시 포함) 미노출.
+- 의존성: [x] DB-03, BE-05 · 근거: BR-01, SC-01
 
 **BE-07. auth: 로그인 (BR-01)**
-- [ ] 올바른 자격 증명 시 200 + 인증 토큰 발급.
-- [ ] 잘못된 비밀번호/미존재 이메일 모두 401(존재 여부 비노출)(SC-01 E1).
-- [ ] 발급 토큰으로 BE-03 통과 확인.
-- 의존성: [ ] BE-06, BE-03 · 근거: SC-01(E1)
+- [x] 올바른 자격 증명 시 200 + 인증 토큰 발급.
+- [x] 잘못된 비밀번호/미존재 이메일 모두 401(존재 여부 비노출)(SC-01 E1).
+- [x] 발급 토큰으로 BE-03 통과 확인.
+- 의존성: [x] BE-06, BE-03 · 근거: SC-01(E1)
 
 **BE-08. team-schedule: 팀 생성 + 내 소속 팀 목록 조회 (BR-15)**
-- [ ] 팀 이름 입력 시 201, `teams` 생성과 동시에 생성자가 `team_memberships`(role=leader)로 트랜잭션 내 즉시 등록(SC-02 2단계, BR-15).
-- [ ] **`GET /api/teams`** — 로그인 사용자의 소속 팀 목록과 각 팀에서의 역할을 반환한다 (§1.2에서 편입된 요구사항, FE-08/FE-10 전제 조건).
-- [ ] 생성 직후 팀 목록/상세 조회 시 생성자가 팀장 역할로 확인됨.
-- 의존성: [ ] DB-04, DB-05, BE-03 · 근거: BR-15, SC-02
+- [x] 팀 이름 입력 시 201, `teams` 생성과 동시에 생성자가 `team_memberships`(role=leader)로 트랜잭션 내 즉시 등록(SC-02 2단계, BR-15).
+- [x] **`GET /api/teams`** — 로그인 사용자의 소속 팀 목록과 각 팀에서의 역할을 반환한다 (§1.2에서 편입된 요구사항, FE-08/FE-10 전제 조건).
+- [x] 생성 직후 팀 목록/상세 조회 시 생성자가 팀장 역할로 확인됨.
+- 의존성: [x] DB-04, DB-05, BE-03 · 근거: BR-15, SC-02
 
 **BE-09. team-schedule: 팀원 검색 및 즉시 추가 (BR-14)**
-- [ ] 팀장이 가입 이메일 검색 시 결과 반환, 추가 요청 시 201 + `team_memberships`(role=member) 즉시 생성(SC-02 3~4단계).
-- [ ] 팀원이 호출 시 403, 미생성(SC-02 E1).
-- [ ] 미가입 이메일 검색/추가 시 404/400 "가입된 사용자를 찾을 수 없습니다"(SC-02 E2, BR-14).
-- [ ] 중복 소속 추가 시도 시 409.
-- [ ] `GET /api/teams/:teamId/members`로 역할 포함 목록 조회 가능.
-- 의존성: [ ] BE-08, BE-04 · 근거: BR-14, SC-02
+- [x] 팀장이 가입 이메일 검색 시 결과 반환, 추가 요청 시 201 + `team_memberships`(role=member) 즉시 생성(SC-02 3~4단계).
+- [x] 팀원이 호출 시 403, 미생성(SC-02 E1).
+- [x] 미가입 이메일 검색/추가 시 404/400 "가입된 사용자를 찾을 수 없습니다"(SC-02 E2, BR-14).
+- [x] 중복 소속 추가 시도 시 409.
+- [x] `GET /api/teams/:teamId/members`로 역할 포함 목록 조회 가능.
+- 의존성: [x] BE-08, BE-04 · 근거: BR-14, SC-02
 
 **BE-10. team-schedule: 역할변경/제외 — 팀장 최소 1인 유지 (BR-09)** *(DB-06을 대체하는 단독 소유 Task)*
-- [ ] 팀장 2명 이상 팀에서 1명 변경/제외 시 정상 처리(SC-11 A1).
-- [ ] 팀장 1명뿐인 팀에서 그 팀장 변경/제외 시도 시 400/409 "팀에는 최소 1명의 팀장이 있어야 합니다", 변경 안 됨(SC-11).
-- [ ] 팀장 본인만 호출 가능, 팀원 호출 시 403.
-- 의존성: [ ] BE-08, BE-09 · 근거: BR-09, SC-11
+- [x] 팀장 2명 이상 팀에서 1명 변경/제외 시 정상 처리(SC-11 A1).
+- [x] 팀장 1명뿐인 팀에서 그 팀장 변경/제외 시도 시 400/409 "팀에는 최소 1명의 팀장이 있어야 합니다", 변경 안 됨(SC-11).
+- [x] 팀장 본인만 호출 가능, 팀원 호출 시 403.
+- 의존성: [x] BE-08, BE-09 · 근거: BR-09, SC-11
 
 **BE-11. BR-09 단위 테스트**
-- [ ] 팀장 1명 상태에서 변경/제외 시도 시 서비스 함수가 실패를 반환하는 테스트 통과.
-- [ ] 팀장 2명 이상 상태에서는 정상 처리 테스트 통과.
-- 의존성: [ ] BE-10 · 근거: `6-project-structure.md` 자동화 우선순위, BR-09
+- [x] 팀장 1명 상태에서 변경/제외 시도 시 서비스 함수가 실패를 반환하는 테스트 통과.
+- [x] 팀장 2명 이상 상태에서는 정상 처리 테스트 통과.
+- 의존성: [x] BE-10 · 근거: `6-project-structure.md` 자동화 우선순위, BR-09
 
 #### Frontend 트랙
 
 **FE-01. 프로젝트 스캐폴딩 및 라우팅**
-- [ ] `npm run dev`로 기동, `/login /signup /teams /teams/:teamId/members /teams/:teamId` 라우트 정의.
-- [ ] ESLint + Prettier 설정.
-- 의존성: [ ] 없음
+- [x] `npm run dev`로 기동, `/login /signup /teams /teams/:teamId/members /teams/:teamId` 라우트 정의.
+- [x] ESLint + Prettier 설정.
+- 의존성: [x] 없음
 
 **FE-02. API Client 공통 모듈**
-- [ ] `.env`의 API base URL로 모든 `*.api.js`가 공용 인스턴스를 통해 호출.
-- [ ] 인증 토큰 자동 첨부.
-- [ ] 401 응답이 공통 에러 객체로 정규화되어 AuthContext에서 로그아웃 처리에 활용 가능.
-- 의존성: [ ] FE-01, [ ] BE-05(에러 응답 포맷 확정)
+- [x] `.env`의 API base URL로 모든 `*.api.js`가 공용 인스턴스를 통해 호출.
+- [x] 인증 토큰 자동 첨부.
+- [x] 401 응답이 공통 에러 객체로 정규화되어 AuthContext에서 로그아웃 처리에 활용 가능.
+- 의존성: [x] FE-01, [x] BE-05(에러 응답 포맷 확정)
 
 **FE-03. auth.api.js**
-- [ ] `signup()`, `login()`이 각각 대응 엔드포인트 호출, 로그인 성공 시 토큰 추출.
-- 의존성: [ ] FE-02, [ ] BE-06, BE-07
+- [x] `signup()`, `login()`이 각각 대응 엔드포인트 호출, 로그인 성공 시 토큰 추출.
+- 의존성: [x] FE-02, [x] BE-06, BE-07
 
 **FE-04. AuthContext**
-- [ ] 로그인 상태/사용자 정보가 새로고침 후에도 유지.
-- [ ] 로그아웃 시 토큰 제거 및 접근 재차단.
-- [ ] `useAuth()` 훅 제공.
-- 의존성: [ ] FE-01, FE-03
+- [x] 로그인 상태/사용자 정보가 새로고침 후에도 유지.
+- [x] 로그아웃 시 토큰 제거 및 접근 재차단.
+- [x] `useAuth()` 훅 제공.
+- 의존성: [x] FE-01, FE-03
 
 **FE-05. ProtectedRoute**
-- [ ] 미인증 상태로 `/teams` 이하 접근 시 데이터 미노출, `/login` 리다이렉트(SC-01 E2).
-- [ ] 서버 401이 최종 신뢰 기준이며 본 Task는 UX 보조임을 주석 명시.
-- 의존성: [ ] FE-04 · 근거: BR-01, SC-01(E2)
+- [x] 미인증 상태로 `/teams` 이하 접근 시 데이터 미노출, `/login` 리다이렉트(SC-01 E2).
+- [x] 서버 401이 최종 신뢰 기준이며 본 Task는 UX 보조임을 주석 명시.
+- 의존성: [x] FE-04 · 근거: BR-01, SC-01(E2)
 
 **FE-06. LoginPage / SignupPage**
-- [ ] 회원가입 성공 시 로그인 화면 이동.
-- [ ] 로그인 성공 시 `/teams` 이동.
-- [ ] 자격 증명 오류 시 오류 문구 노출, 화면 유지(SC-01 E1).
-- 의존성: [ ] FE-03, FE-04, FE-07
+- [x] 회원가입 성공 시 로그인 화면 이동.
+- [x] 로그인 성공 시 `/teams` 이동.
+- [x] 자격 증명 오류 시 오류 문구 노출, 화면 유지(SC-01 E1).
+- 의존성: [x] FE-03, FE-04, FE-07
 
 **FE-07. common/ 공통 UI 컴포넌트**
-- [ ] Button/Modal/TextInput/FormField 4종 이상, 스토리북 등 별도 문서화 없음.
-- 의존성: [ ] FE-01
+- [x] Button/Modal/TextInput/FormField 4종 이상, 스토리북 등 별도 문서화 없음.
+- 의존성: [x] FE-01
 
 **FE-08. team.api.js**
-- [ ] `createTeam`, `getMyTeams`(BE-08의 `GET /api/teams`), `searchMemberByEmail`, `addMember`, `updateMemberRole`, `removeMember`.
-- 의존성: [ ] FE-02, [ ] BE-08, BE-09, BE-10 (§1.2 반영으로 `getMyTeams` 불확실성 해소됨)
+- [x] `createTeam`, `getMyTeams`(BE-08의 `GET /api/teams`), `searchMemberByEmail`, `addMember`, `updateMemberRole`, `removeMember`.
+- 의존성: [x] FE-02, [x] BE-08, BE-09, BE-10 (§1.2 반영으로 `getMyTeams` 불확실성 해소됨)
 
 **FE-09. TeamContext**
-- [ ] 팀 전환 시 `currentTeam`/`currentRole` 갱신 및 하위 컴포넌트 리렌더.
-- [ ] 동일 사용자가 팀마다 다른 역할을 가질 때 정확히 반영(SC-02 A1, BR-08).
-- 의존성: [ ] FE-04, FE-08
+- [x] 팀 전환 시 `currentTeam`/`currentRole` 갱신 및 하위 컴포넌트 리렌더.
+- [x] 동일 사용자가 팀마다 다른 역할을 가질 때 정확히 반영(SC-02 A1, BR-08).
+- 의존성: [x] FE-04, FE-08
 
 **FE-10. TeamListPage**
-- [ ] 소속 팀 목록과 역할 표시.
-- [ ] 팀 생성 즉시 본인이 팀장으로 목록에 추가(BR-15, SC-02).
-- 의존성: [ ] FE-08, FE-09, FE-07
+- [x] 소속 팀 목록과 역할 표시.
+- [x] 팀 생성 즉시 본인이 팀장으로 목록에 추가(BR-15, SC-02).
+- 의존성: [x] FE-08, FE-09, FE-07
 
 **FE-11. 팀 생성 폼 + 팀원 검색/추가 UI**
-- [ ] 이메일 검색 → 즉시 추가(초대 발송/수락 UI 없음, BR-14).
-- [ ] 미가입 이메일 시 안내 문구(SC-02 E2).
-- [ ] 팀원 계정에는 팀원 추가 UI 비노출(SC-02 E1).
-- 의존성: [ ] FE-08, FE-09, FE-07
+- [x] 이메일 검색 → 즉시 추가(초대 발송/수락 UI 없음, BR-14).
+- [x] 미가입 이메일 시 안내 문구(SC-02 E2).
+- [x] 팀원 계정에는 팀원 추가 UI 비노출(SC-02 E1).
+- 의존성: [x] FE-08, FE-09, FE-07
 
 **FE-12. TeamMembersPage**
-- [ ] 팀장 계정에서만 "역할 변경"/"제외" 버튼 노출.
-- [ ] 팀장 1명뿐인 상태에서 서버 오류 메시지 그대로 노출, 상태 불변(SC-11).
-- [ ] 팀장 2명 이상이면 정상 반영(SC-11 A1).
+- [x] 팀장 계정에서만 "역할 변경"/"제외" 버튼 노출.
+- [x] 팀장 1명뿐인 상태에서 서버 오류 메시지 그대로 노출, 상태 불변(SC-11).
+- [x] 팀장 2명 이상이면 정상 반영(SC-11 A1).
 - 의존성: [ ] FE-08, FE-09, FE-07, [ ] BE-10
 
 ---
@@ -565,7 +565,7 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 
 ### 3.3 Day별 완료 게이트 요약
 
-- [ ] **Day 1 완료 조건**: DB-01~12, BE-01~11, FE-01~12 전체 체크 완료 — 로그인 후 팀 생성/팀원 추가/역할 관리가 API~UI까지 동작.
+- [x] **Day 1 완료 조건**: DB-01~12, BE-01~11, FE-01~12 전체 체크 완료 — 로그인 후 팀 생성/팀원 추가/역할 관리가 API~UI까지 동작.
 - [ ] **Day 2 완료 조건**: DB-13, BE-12~15, FE-13~21 전체 체크 완료 — 팀장이 일정을 CRUD하고 팀원이 월/주/일로 조회 가능.
 - [ ] **Day 3 완료 조건**: DB-15, BE-16~17, FE-22~26 전체 체크 완료 — 캘린더와 채팅이 한 화면에서 동시 동작, 일자별 이력 조회 가능.
 - [ ] **Day 4 완료 조건**: BE-18~24, FE-27~33 전체 체크 완료 — 변경 요청 제기→승인/거절/자동거절/취소→시스템 메시지 기록까지 전체 플로우 동작.
