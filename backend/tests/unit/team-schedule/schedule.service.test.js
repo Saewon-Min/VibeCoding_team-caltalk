@@ -305,6 +305,27 @@ describe('schedule.service — BE-13 일정 수정/삭제 (BR-02, BR-03)', () =>
       expect(row.description).toBe('수정된 설명');
     });
 
+    test('teamId가 숫자 타입(teamAccessMiddleware가 실제로 전달하는 형태)이어도 정상 수정된다', async () => {
+      // 회귀 테스트: schedules.team_id는 bigint라 pg가 문자열로 반환하므로, findScheduleById가
+      // 반환한 schedule.teamId(문자열)와 라우트에서 Number(req.params.teamId)로 넘어오는 teamId(숫자)를
+      // 엄격 비교(!==)하면 항상 불일치해 정상 요청도 404로 거부되던 버그가 있었다.
+      const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+      const created = await scheduleService.createSchedule('leader', teamId, leaderId, {
+        title: '숫자 teamId 테스트',
+        startAt: '2026-07-14T09:00:00.000Z',
+        endAt: '2026-07-14T10:00:00.000Z',
+      });
+
+      const result = await scheduleService.updateScheduleFields(
+        'leader',
+        Number(teamId),
+        created.id,
+        { title: '숫자 teamId로 수정 성공' },
+      );
+
+      expect(result.title).toBe('숫자 teamId로 수정 성공');
+    });
+
     test('participantUserIds를 새 목록으로 교체하면 기존 참여자는 제거되고 신규 참여자만 남는다', async () => {
       const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 3 });
       const created = await scheduleService.createSchedule('leader', teamId, leaderId, {
@@ -522,6 +543,21 @@ describe('schedule.service — BE-13 일정 수정/삭제 (BR-02, BR-03)', () =>
 
       expect(await scheduleExists(created.id)).toBe(false);
       expect(await getParticipantUserIds(created.id)).toEqual([]);
+    });
+
+    test('teamId가 숫자 타입(teamAccessMiddleware가 실제로 전달하는 형태)이어도 정상 삭제된다', async () => {
+      const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+      const created = await scheduleService.createSchedule('leader', teamId, leaderId, {
+        title: '숫자 teamId 삭제 테스트',
+        startAt: '2026-07-14T09:00:00.000Z',
+        endAt: '2026-07-14T10:00:00.000Z',
+      });
+
+      await expect(
+        scheduleService.deleteSchedule('leader', Number(teamId), created.id),
+      ).resolves.toBeUndefined();
+
+      expect(await scheduleExists(created.id)).toBe(false);
     });
 
     test('팀원이 삭제를 시도하면 403이며 삭제되지 않는다', async () => {

@@ -76,7 +76,9 @@ async function updateScheduleFields(actorRole, teamId, scheduleId, patch, option
 
   try {
     const schedule = await scheduleQueries.findScheduleById(client, scheduleId);
-    if (!schedule || schedule.teamId !== teamId) {
+    // team_id는 bigint 컬럼이라 pg 드라이버가 문자열로 반환하므로, Number 변환 후 비교한다
+    // (teamAccessMiddleware가 req.teamMembership.teamId를 Number로 세팅하는 것과 맞춤).
+    if (!schedule || Number(schedule.teamId) !== Number(teamId)) {
       throw new NotFoundError('일정을 찾을 수 없습니다');
     }
 
@@ -126,7 +128,7 @@ async function deleteSchedule(actorRole, teamId, scheduleId) {
   const client = await pool.connect();
   try {
     const schedule = await scheduleQueries.findScheduleById(client, scheduleId);
-    if (!schedule || schedule.teamId !== teamId) {
+    if (!schedule || Number(schedule.teamId) !== Number(teamId)) {
       throw new NotFoundError('일정을 찾을 수 없습니다');
     }
 
