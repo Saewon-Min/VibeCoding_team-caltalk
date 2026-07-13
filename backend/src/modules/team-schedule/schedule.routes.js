@@ -22,4 +22,33 @@ router.post('/:teamId/schedules', teamAccessMiddleware, async (req, res, next) =
   }
 });
 
+// BE-13: 팀 일정 수정 (BR-02, BR-03)
+router.patch('/:teamId/schedules/:scheduleId', teamAccessMiddleware, async (req, res, next) => {
+  try {
+    const schedule = await scheduleService.updateScheduleFields(
+      req.teamMembership.role,
+      req.teamMembership.teamId,
+      Number(req.params.scheduleId),
+      req.body,
+    );
+    res.status(200).json(schedule);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// BE-13: 팀 일정 삭제 (BR-02, BR-03)
+router.delete('/:teamId/schedules/:scheduleId', teamAccessMiddleware, async (req, res, next) => {
+  try {
+    await scheduleService.deleteSchedule(
+      req.teamMembership.role,
+      req.teamMembership.teamId,
+      Number(req.params.scheduleId),
+    );
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
