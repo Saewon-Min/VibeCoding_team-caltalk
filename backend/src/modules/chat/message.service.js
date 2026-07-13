@@ -85,4 +85,21 @@ async function getMessages(teamId, date, since) {
   return messageQueries.findMessagesByTeamAndDate(pool, teamId, rangeStart, rangeEnd, sinceDate);
 }
 
-module.exports = { createMessage, createSystemMessage, getMessages };
+// BE-18: change-request 모듈이 변경 요청 제기 트랜잭션 안에서 message_type=change_request
+// 메시지를 함께 커밋하기 위해 사용하는 공개 함수. createSystemMessage와 동일하게, 요청 생성과
+// 메시지 생성이 항상 한 트랜잭션이어야 하므로 client를 필수 인자로 받는다. content는 호출자가
+// 넘긴 reason 문자열을 그대로 저장한다(SC-06 — 사용자가 입력한 내용 자체가 곧 reason).
+async function createChangeRequestMessage(client, teamId, authorId, content) {
+  if (typeof content !== 'string' || content.trim().length === 0) {
+    throw new BadRequestError('content는 비어 있지 않은 문자열이어야 합니다');
+  }
+
+  return messageQueries.createMessage(client, {
+    teamId,
+    authorId,
+    messageType: MESSAGE_TYPE.CHANGE_REQUEST,
+    content,
+  });
+}
+
+module.exports = { createMessage, createSystemMessage, getMessages, createChangeRequestMessage };
