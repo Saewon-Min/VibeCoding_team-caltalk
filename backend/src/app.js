@@ -16,6 +16,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', require('./modules/auth/auth.routes'));
 app.use('/api/teams', require('./modules/team-schedule/team.routes'));
 app.use('/api/teams', require('./modules/team-schedule/schedule.routes'));
+app.use('/api/teams', require('./modules/chat/message.routes'));
 
 app.use(notFoundHandler);
 app.use(errorHandler);
