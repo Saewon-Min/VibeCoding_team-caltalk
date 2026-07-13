@@ -198,10 +198,17 @@ async function getSchedules(actorRole, teamId, view, date) {
   return rows.map((row) => ({ ...row, canEdit }));
 }
 
+// BE-18: change-request 모듈이 scheduleId만으로 teamId 소속 여부(BR-16)를 판단할 수 있도록
+// 공개하는 얇은 조회 함수. 다른 모듈이 schedule.queries.js를 직접 참조하지 않게 하기 위한 창구.
+async function getScheduleById(scheduleId) {
+  return scheduleQueries.findScheduleById(pool, scheduleId);
+}
+
 module.exports = {
   createSchedule,
   updateScheduleFields,
   deleteSchedule,
   getSchedules,
   computeDateRange,
+  getScheduleById,
 };
