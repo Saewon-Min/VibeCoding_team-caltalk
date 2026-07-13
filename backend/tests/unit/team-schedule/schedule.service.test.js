@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { pool } = require('../../../src/db/pool');
 const scheduleService = require('../../../src/modules/team-schedule/schedule.service');
+const teamAccessMiddleware = require('../../../src/middleware/team-access.middleware');
 
 async function createUser(name, email) {
   const result = await pool.query(
@@ -229,7 +230,6 @@ describe('schedule.service — BE-14 월/주/일 일정 조회 (BR-03, BR-16)', 
     for (const id of createdUserIds) {
       await pool.query('DELETE FROM users WHERE id = $1', [id]);
     }
-    await pool.end();
   });
 
   async function createUser(name, email) {
@@ -438,5 +438,143 @@ describe('schedule.service — BE-14 월/주/일 일정 조회 (BR-03, BR-16)', 
     await expect(
       scheduleService.getSchedules('leader', teamId, 'month', undefined),
     ).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
+
+describe('team-access — BR-16 접근제어 (BE-15)', () => {
+  const createdUserIds = [];
+  const createdTeamIds = [];
+
+  afterAll(async () => {
+    for (const teamId of createdTeamIds) {
+      await cleanupTeam(teamId);
+    }
+    for (const id of createdUserIds) {
+      await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+    await pool.end();
+  });
+
+  async function createUser(name, email) {
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, 'x')
+       RETURNING id`,
+      [name, email],
+    );
+    return result.rows[0].id;
+  }
+
+  async function createTeamWithLeader(name, leaderId) {
+    const teamResult = await pool.query(
+      'INSERT INTO teams (name, created_by) VALUES ($1, $2) RETURNING id',
+      [name, leaderId],
+    );
+    const teamId = teamResult.rows[0].id;
+    await pool.query(
+      `INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, 'leader')`,
+      [teamId, leaderId],
+    );
+    return teamId;
+  }
+
+  async function addMembership(teamId, userId, role) {
+    await pool.query('INSERT INTO team_memberships (team_id, user_id, role) VALUES ($1, $2, $3)', [
+      teamId,
+      userId,
+      role,
+    ]);
+  }
+
+  async function cleanupTeam(teamId) {
+    // schedules/schedule_participants는 teams FK ON DELETE CASCADE로 함께 삭제된다.
+    await pool.query('DELETE FROM team_memberships WHERE team_id = $1', [teamId]);
+    await pool.query('DELETE FROM teams WHERE id = $1', [teamId]);
+  }
+
+  async function setupTeam({ memberCount = 2 } = {}) {
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const leaderId = await createUser('팀장', `access-leader-${suffix}@test.com`);
+    createdUserIds.push(leaderId);
+    const teamId = await createTeamWithLeader(`접근제어테스트팀-${suffix}`, leaderId);
+    createdTeamIds.push(teamId);
+
+    const memberIds = [];
+    for (let i = 0; i < memberCount; i += 1) {
+      const memberId = await createUser(`팀원${i}`, `access-member${i}-${suffix}@test.com`);
+      createdUserIds.push(memberId);
+      await addMembership(teamId, memberId, 'member');
+      memberIds.push(memberId);
+    }
+
+    return { leaderId, teamId, memberIds };
+  }
+
+  test('teamAccessMiddleware — 소속 사용자는 통과하며 req.teamMembership이 세팅된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+
+    const req = { params: { teamId: String(teamId) }, user: { id: leaderId } };
+    const res = {};
+    const next = jest.fn();
+
+    await teamAccessMiddleware(req, res, next);
+
+    // teams.id는 bigserial이라 pg 드라이버가 setupTeam()의 teamId를 문자열로 반환하지만,
+    // teamAccessMiddleware는 req.params.teamId를 Number()로 변환해 세팅하므로 숫자로 비교한다.
+    expect(next).toHaveBeenCalledWith();
+    expect(req.teamMembership).toEqual({ teamId: Number(teamId), role: 'leader' });
+  });
+
+  test('teamAccessMiddleware — 비소속 사용자는 403(ForbiddenError)으로 거부된다', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const req = { params: { teamId: String(teamA.teamId) }, user: { id: teamB.leaderId } };
+    const res = {};
+    const next = jest.fn();
+
+    await teamAccessMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403 }));
+    expect(req.teamMembership).toBeUndefined();
+  });
+
+  test('requireScheduleTeamAccess — 소속 사용자(리더/팀원)는 scheduleId만으로 teamId/role을 정확히 반환한다', async () => {
+    const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 1 });
+    const memberId = memberIds[0];
+
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '접근제어 검증 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+    });
+
+    const leaderAccess = await teamAccessMiddleware.requireScheduleTeamAccess(schedule.id, leaderId);
+    expect(leaderAccess).toEqual({ teamId, role: 'leader' });
+
+    const memberAccess = await teamAccessMiddleware.requireScheduleTeamAccess(schedule.id, memberId);
+    expect(memberAccess).toEqual({ teamId, role: 'member' });
+  });
+
+  test('requireScheduleTeamAccess — 다른 팀 소속 사용자는 scheduleId만으로도 403(ForbiddenError)으로 거부된다', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const scheduleA = await scheduleService.createSchedule('leader', teamA.teamId, teamA.leaderId, {
+      title: 'teamA 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+    });
+
+    await expect(
+      teamAccessMiddleware.requireScheduleTeamAccess(scheduleA.id, teamB.leaderId),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  test('requireScheduleTeamAccess — 존재하지 않는 scheduleId도 403(ForbiddenError)으로 거부된다', async () => {
+    const { leaderId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      teamAccessMiddleware.requireScheduleTeamAccess(999999999, leaderId),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 });
