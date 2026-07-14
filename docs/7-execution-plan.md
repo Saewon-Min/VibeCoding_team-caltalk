@@ -46,134 +46,134 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### DB 트랙
 
 **DB-01. PostgreSQL 연결 풀 및 환경설정**
-- [ ] `backend/src/db/pool.js`가 `pg.Pool`을 생성하고 `.env`의 DB 접속정보로 초기화된다.
-- [ ] `backend/.env.example`에 `DB_HOST/PORT/NAME/USER/PASSWORD`가 값 없이 포함된다.
-- [ ] 앱 기동 시 헬스체크 쿼리로 연결 성공 여부가 로그로 확인된다.
-- [ ] `.env`는 `.gitignore`에 포함된다.
-- 의존성: [ ] 없음(최초 작업)
+- [x] `backend/src/db/pool.js`가 `pg.Pool`을 생성하고 `.env`의 DB 접속정보로 초기화된다.
+- [x] `backend/.env.example`에 `DB_HOST/PORT/NAME/USER/PASSWORD`가 값 없이 포함된다.
+- [x] 앱 기동 시 헬스체크 쿼리로 연결 성공 여부가 로그로 확인된다.
+- [x] `.env`는 `.gitignore`에 포함된다.
+- 의존성: [x] 없음(최초 작업)
 
 **DB-02. 마이그레이션 실행 체계 구축**
 - [ ] `backend/src/db/migrations/`에 순번 기반 파일 네이밍 규칙이 문서화되어 있다.
-- [ ] `npm run migrate`(up) / `npm run migrate:undo`(최소 1단계 롤백) 스크립트가 존재한다.
+- [x] `npm run migrate`(up) / `npm run migrate:undo`(최소 1단계 롤백) 스크립트가 존재한다.
 - [ ] 빈 DB에서 `npm run migrate` 1회 실행으로 전체 스키마가 오류 없이 생성된다.
-- 의존성: [ ] DB-01
+- 의존성: [x] DB-01
 
 **DB-03. users 테이블 (ENT-01)**
-- [ ] `email UNIQUE NOT NULL`, `password_hash NOT NULL` (평문 비밀번호 컬럼 없음).
-- [ ] 중복 이메일 INSERT 시 `unique_violation` 발생을 확인한다.
+- [x] `email UNIQUE NOT NULL`, `password_hash NOT NULL` (평문 비밀번호 컬럼 없음).
+- [x] 중복 이메일 INSERT 시 `unique_violation` 발생을 확인한다.
 - 의존성: [ ] DB-02 · 근거: ENT-01, BR-01, BR-14
 
 **DB-04. teams 테이블 (ENT-02)**
-- [ ] `created_by`가 `users.id` FK로 설정되어 팀 생성자를 식별한다(BR-15 지원).
-- [ ] 존재하지 않는 `user_id`로 INSERT 시 FK 위반을 확인한다.
-- 의존성: [ ] DB-03 · 근거: ENT-02, BR-15
+- [x] `created_by`가 `users.id` FK로 설정되어 팀 생성자를 식별한다(BR-15 지원).
+- [x] 존재하지 않는 `user_id`로 INSERT 시 FK 위반을 확인한다.
+- 의존성: [x] DB-03 · 근거: ENT-02, BR-15
 
 **DB-05. team_memberships 테이블 (ENT-03, BR-08)**
-- [ ] `UNIQUE(team_id, user_id)` — 동일 팀 중복 소속 차단.
-- [ ] `role CHECK IN ('leader','member')`.
-- [ ] `user_id` 단독 유니크는 없음 — 한 사용자가 여러 팀에 다른 역할로 소속 가능함을 스키마로 확인(BR-08).
-- 의존성: [ ] DB-04 · 근거: ENT-03, BR-08, BR-14
+- [x] `UNIQUE(team_id, user_id)` — 동일 팀 중복 소속 차단.
+- [x] `role CHECK IN ('leader','member')`.
+- [x] `user_id` 단독 유니크는 없음 — 한 사용자가 여러 팀에 다른 역할로 소속 가능함을 스키마로 확인(BR-08).
+- 의존성: [x] DB-04 · 근거: ENT-03, BR-08, BR-14
 
 **DB-06. ~~BR-09 트리거~~ → 채택하지 않음**
 - 사유: §1.1. BR-09(팀장 최소 1인 유지)는 **BE-10**(Service 계층) + **BE-11**(단위 테스트)이 단독 소유한다.
 
 **DB-07. schedules 테이블 (ENT-04, BR-07)**
-- [ ] `team_id NOT NULL FK` — 다대다 연결 테이블 없이 단일 FK로 팀 귀속 보장(BR-07).
-- [ ] `CHECK (end_time > start_time)`.
-- [ ] `end_time <= start_time` INSERT 시 `check_violation` 확인.
-- [ ] 역할 기반 쓰기 권한(BR-02)은 이 테이블 책임이 아니라 Service 계층(BE-12) 책임임을 주석으로 명시.
-- 의존성: [ ] DB-04 · 근거: ENT-04, BR-02(Service 책임 명시), BR-07
+- [x] `team_id NOT NULL FK` — 다대다 연결 테이블 없이 단일 FK로 팀 귀속 보장(BR-07).
+- [x] `CHECK (end_time > start_time)`.
+- [x] `end_time <= start_time` INSERT 시 `check_violation` 확인.
+- [x] 역할 기반 쓰기 권한(BR-02)은 이 테이블 책임이 아니라 Service 계층(BE-12) 책임임을 주석으로 명시.
+- 의존성: [x] DB-04 · 근거: ENT-04, BR-02(Service 책임 명시), BR-07
 
 **DB-08. schedule_participants 테이블 (ENT-05)**
-- [ ] `UNIQUE(schedule_id, user_id)`.
-- [ ] `schedule_id ON DELETE CASCADE` — 일정 삭제 시 참여자 레코드 함께 삭제(SC-05).
-- 의존성: [ ] DB-07 · 근거: ENT-05, SC-03, SC-05
+- [x] `UNIQUE(schedule_id, user_id)`.
+- [x] `schedule_id ON DELETE CASCADE` — 일정 삭제 시 참여자 레코드 함께 삭제(SC-05).
+- 의존성: [x] DB-07 · 근거: ENT-05, SC-03, SC-05
 
 **DB-09. messages 테이블 (ENT-06)**
-- [ ] `message_type CHECK IN ('general','change_request','system')`.
-- [ ] `CHECK ((message_type='system' AND author_id IS NULL) OR (message_type<>'system' AND author_id IS NOT NULL))` — 시스템 메시지만 작성자 없음을 DB 레벨로 강제.
-- [ ] `team_id NOT NULL FK` — 모든 메시지가 팀에 귀속(BR-16 전제).
-- 의존성: [ ] DB-04 · 근거: ENT-06, BR-06(데이터 형태만), BR-16
+- [x] `message_type CHECK IN ('general','change_request','system')`.
+- [x] `CHECK ((message_type='system' AND author_id IS NULL) OR (message_type<>'system' AND author_id IS NOT NULL))` — 시스템 메시지만 작성자 없음을 DB 레벨로 강제.
+- [x] `team_id NOT NULL FK` — 모든 메시지가 팀에 귀속(BR-16 전제).
+- 의존성: [x] DB-04 · 근거: ENT-06, BR-06(데이터 형태만), BR-16
 
 **DB-10. schedule_change_requests 테이블 (ENT-07)**
-- [ ] `message_id NOT NULL UNIQUE FK → messages.id` — 모든 변경요청이 정확히 1개의 채팅 메시지와 1:1 연결(BR-04 구조적 전제).
-- [ ] `status CHECK IN ('pending','approved','rejected','cancelled') DEFAULT 'pending'`.
-- [ ] `processor_id`, `processed_at`은 nullable.
-- 의존성: [ ] DB-07, DB-09 · 근거: ENT-07, BR-04, BR-05
+- [x] `message_id NOT NULL UNIQUE FK → messages.id` — 모든 변경요청이 정확히 1개의 채팅 메시지와 1:1 연결(BR-04 구조적 전제).
+- [x] `status CHECK IN ('pending','approved','rejected','cancelled') DEFAULT 'pending'`.
+- [x] `processor_id`, `processed_at`은 nullable.
+- 의존성: [x] DB-07, DB-09 · 근거: ENT-07, BR-04, BR-05
 
 **DB-11. 인덱스 설계**
-- [ ] `idx_team_memberships_user_id`, `idx_schedules_team_id_start_time`, `idx_schedule_participants_schedule_id`, `idx_schedule_participants_user_id`, `idx_messages_team_id_created_at`, `idx_change_requests_schedule_id_status`.
+- [x] `idx_team_memberships_user_id`, `idx_schedules_team_id_start_time`, `idx_schedule_participants_schedule_id`, `idx_schedule_participants_user_id`, `idx_messages_team_id_created_at`, `idx_change_requests_schedule_id_status`.
 - [ ] `EXPLAIN`으로 각 인덱스가 대응 쿼리에서 Index Scan으로 선택됨을 확인.
-- 의존성: [ ] DB-05, DB-07, DB-08, DB-09, DB-10 · 근거: BR-03, BR-06, BR-11, BR-16
+- 의존성: [x] DB-05, DB-07, DB-08, DB-09, DB-10 · 근거: BR-03, BR-06, BR-11, BR-16
 
 **DB-12. 시드 데이터 스크립트**
-- [ ] `npm run seed`로 `3-user-scenarios.md` 1.4절의 테크팀/디자인팀, 김철수/이서연/박준영/최유진/정다은, 일정 예시 1~4가 재현된다.
-- [ ] 비밀번호는 DB-03과 동일한 해시 방식으로 저장된다.
-- [ ] 재실행해도 중복 키 오류가 없다(`ON CONFLICT DO NOTHING` 등).
-- 의존성: [ ] DB-03, DB-04, DB-05, DB-07, DB-08 · 근거: SC-01~SC-12(Day5 QA용)
+- [x] `npm run seed`로 `3-user-scenarios.md` 1.4절의 테크팀/디자인팀, 김철수/이서연/박준영/최유진/정다은, 일정 예시 1~4가 재현된다.
+- [x] 비밀번호는 DB-03과 동일한 해시 방식으로 저장된다.
+- [x] 재실행해도 중복 키 오류가 없다(`ON CONFLICT DO NOTHING` 등).
+- 의존성: [x] DB-03, DB-04, DB-05, DB-07, DB-08 · 근거: SC-01~SC-12(Day5 QA용)
 
 #### Backend 트랙
 
 **BE-01. 프로젝트 스캐폴딩**
-- [ ] `backend/src/modules/{auth,team-schedule,chat,change-request}`, `middleware/`, `db/`, `shared/` 디렉토리 생성.
-- [ ] `npm run dev`로 서버 기동, `GET /health` 200 응답.
-- [ ] ESLint + Prettier 설정, `npm run lint` 동작.
-- 의존성: [ ] 없음
+- [x] `backend/src/modules/{auth,team-schedule,chat,change-request}`, `middleware/`, `db/`, `shared/` 디렉토리 생성.
+- [x] `npm run dev`로 서버 기동, `GET /health` 200 응답.
+- [x] ESLint + Prettier 설정, `npm run lint` 동작.
+- 의존성: [x] 없음
 
 **BE-03. 인증 미들웨어 (BR-01)**
-- [ ] 인증 토큰 없이 보호된 라우트 호출 시 401, 데이터 미포함(SC-01 E2).
-- [ ] 유효 토큰이면 `req.user` 채운 뒤 `next()`.
-- [ ] 만료/위조 토큰도 401.
-- 의존성: [ ] BE-01
+- [x] 인증 토큰 없이 보호된 라우트 호출 시 401, 데이터 미포함(SC-01 E2).
+- [x] 유효 토큰이면 `req.user` 채운 뒤 `next()`.
+- [x] 만료/위조 토큰도 401.
+- 의존성: [x] BE-01
 
 **BE-04. 팀 경계 접근 제어 미들웨어 (BR-16)**
-- [ ] `:teamId` 비소속 사용자는 403, 데이터 미포함(SC-04/08/12 E1).
-- [ ] 소속 사용자는 `req.teamMembership`(역할 포함) 채운 뒤 `next()`.
-- [ ] `scheduleId` 등 teamId가 URL에 없는 리소스도 소속 팀 조회 기반으로 검증하는 재사용 가능한 헬퍼 제공.
-- 의존성: [ ] DB-05, BE-03 · 근거: BR-16, SC-04/08/12
+- [x] `:teamId` 비소속 사용자는 403, 데이터 미포함(SC-04/08/12 E1).
+- [x] 소속 사용자는 `req.teamMembership`(역할 포함) 채운 뒤 `next()`.
+- [x] `scheduleId` 등 teamId가 URL에 없는 리소스도 소속 팀 조회 기반으로 검증하는 재사용 가능한 헬퍼 제공.
+- 의존성: [x] DB-05, BE-03 · 근거: BR-16, SC-04/08/12
 
 **BE-05. 공통 에러 핸들러 및 로깅**
-- [ ] 모든 예외가 공통 에러 핸들러로 일관된 JSON 형식 응답.
-- [ ] 401/403/404/409/500 상태 코드가 커스텀 에러 클래스로 매핑.
-- [ ] 처리되지 않은 예외로 서버가 크래시되지 않음.
-- 의존성: [ ] BE-01
+- [x] 모든 예외가 공통 에러 핸들러로 일관된 JSON 형식 응답.
+- [x] 401/403/404/409/500 상태 코드가 커스텀 에러 클래스로 매핑.
+- [x] 처리되지 않은 예외로 서버가 크래시되지 않음.
+- 의존성: [x] BE-01
 
 **BE-06. auth: 회원가입 (BR-01)**
-- [ ] 정상 입력 시 201, 비밀번호는 해시로 저장(DB 직접 확인).
-- [ ] 이메일 형식 오류 400, 중복 이메일 409.
-- [ ] 응답 바디에 비밀번호(해시 포함) 미노출.
-- 의존성: [ ] DB-03, BE-05 · 근거: BR-01, SC-01
+- [x] 정상 입력 시 201, 비밀번호는 해시로 저장(DB 직접 확인).
+- [x] 이메일 형식 오류 400, 중복 이메일 409.
+- [x] 응답 바디에 비밀번호(해시 포함) 미노출.
+- 의존성: [x] DB-03, BE-05 · 근거: BR-01, SC-01
 
 **BE-07. auth: 로그인 (BR-01)**
-- [ ] 올바른 자격 증명 시 200 + 인증 토큰 발급.
-- [ ] 잘못된 비밀번호/미존재 이메일 모두 401(존재 여부 비노출)(SC-01 E1).
-- [ ] 발급 토큰으로 BE-03 통과 확인.
-- 의존성: [ ] BE-06, BE-03 · 근거: SC-01(E1)
+- [x] 올바른 자격 증명 시 200 + 인증 토큰 발급.
+- [x] 잘못된 비밀번호/미존재 이메일 모두 401(존재 여부 비노출)(SC-01 E1).
+- [x] 발급 토큰으로 BE-03 통과 확인.
+- 의존성: [x] BE-06, BE-03 · 근거: SC-01(E1)
 
 **BE-08. team-schedule: 팀 생성 + 내 소속 팀 목록 조회 (BR-15)**
-- [ ] 팀 이름 입력 시 201, `teams` 생성과 동시에 생성자가 `team_memberships`(role=leader)로 트랜잭션 내 즉시 등록(SC-02 2단계, BR-15).
-- [ ] **`GET /api/teams`** — 로그인 사용자의 소속 팀 목록과 각 팀에서의 역할을 반환한다 (§1.2에서 편입된 요구사항, FE-08/FE-10 전제 조건).
-- [ ] 생성 직후 팀 목록/상세 조회 시 생성자가 팀장 역할로 확인됨.
-- 의존성: [ ] DB-04, DB-05, BE-03 · 근거: BR-15, SC-02
+- [x] 팀 이름 입력 시 201, `teams` 생성과 동시에 생성자가 `team_memberships`(role=leader)로 트랜잭션 내 즉시 등록(SC-02 2단계, BR-15).
+- [x] **`GET /api/teams`** — 로그인 사용자의 소속 팀 목록과 각 팀에서의 역할을 반환한다 (§1.2에서 편입된 요구사항, FE-08/FE-10 전제 조건).
+- [x] 생성 직후 팀 목록/상세 조회 시 생성자가 팀장 역할로 확인됨.
+- 의존성: [x] DB-04, DB-05, BE-03 · 근거: BR-15, SC-02
 
 **BE-09. team-schedule: 팀원 검색 및 즉시 추가 (BR-14)**
-- [ ] 팀장이 가입 이메일 검색 시 결과 반환, 추가 요청 시 201 + `team_memberships`(role=member) 즉시 생성(SC-02 3~4단계).
-- [ ] 팀원이 호출 시 403, 미생성(SC-02 E1).
-- [ ] 미가입 이메일 검색/추가 시 404/400 "가입된 사용자를 찾을 수 없습니다"(SC-02 E2, BR-14).
-- [ ] 중복 소속 추가 시도 시 409.
-- [ ] `GET /api/teams/:teamId/members`로 역할 포함 목록 조회 가능.
-- 의존성: [ ] BE-08, BE-04 · 근거: BR-14, SC-02
+- [x] 팀장이 가입 이메일 검색 시 결과 반환, 추가 요청 시 201 + `team_memberships`(role=member) 즉시 생성(SC-02 3~4단계).
+- [x] 팀원이 호출 시 403, 미생성(SC-02 E1).
+- [x] 미가입 이메일 검색/추가 시 404/400 "가입된 사용자를 찾을 수 없습니다"(SC-02 E2, BR-14).
+- [x] 중복 소속 추가 시도 시 409.
+- [x] `GET /api/teams/:teamId/members`로 역할 포함 목록 조회 가능.
+- 의존성: [x] BE-08, BE-04 · 근거: BR-14, SC-02
 
 **BE-10. team-schedule: 역할변경/제외 — 팀장 최소 1인 유지 (BR-09)** *(DB-06을 대체하는 단독 소유 Task)*
-- [ ] 팀장 2명 이상 팀에서 1명 변경/제외 시 정상 처리(SC-11 A1).
-- [ ] 팀장 1명뿐인 팀에서 그 팀장 변경/제외 시도 시 400/409 "팀에는 최소 1명의 팀장이 있어야 합니다", 변경 안 됨(SC-11).
-- [ ] 팀장 본인만 호출 가능, 팀원 호출 시 403.
-- 의존성: [ ] BE-08, BE-09 · 근거: BR-09, SC-11
+- [x] 팀장 2명 이상 팀에서 1명 변경/제외 시 정상 처리(SC-11 A1).
+- [x] 팀장 1명뿐인 팀에서 그 팀장 변경/제외 시도 시 400/409 "팀에는 최소 1명의 팀장이 있어야 합니다", 변경 안 됨(SC-11).
+- [x] 팀장 본인만 호출 가능, 팀원 호출 시 403.
+- 의존성: [x] BE-08, BE-09 · 근거: BR-09, SC-11
 
 **BE-11. BR-09 단위 테스트**
-- [ ] 팀장 1명 상태에서 변경/제외 시도 시 서비스 함수가 실패를 반환하는 테스트 통과.
-- [ ] 팀장 2명 이상 상태에서는 정상 처리 테스트 통과.
-- 의존성: [ ] BE-10 · 근거: `6-project-structure.md` 자동화 우선순위, BR-09
+- [x] 팀장 1명 상태에서 변경/제외 시도 시 서비스 함수가 실패를 반환하는 테스트 통과.
+- [x] 팀장 2명 이상 상태에서는 정상 처리 테스트 통과.
+- 의존성: [x] BE-10 · 근거: `6-project-structure.md` 자동화 우선순위, BR-09
 
 #### Frontend 트랙
 
@@ -247,35 +247,35 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 
 **DB-13. schedules 조회 성능 검증**
 - [ ] 월간 범위 조회 쿼리에 `idx_schedules_team_id_start_time`이 사용됨을 `EXPLAIN`으로 확인.
-- [ ] 월 경계를 넘는 일정이 조회 결과에서 누락되지 않는지 `start_time`/`end_time` 조건으로 검증.
+- [x] 월 경계를 넘는 일정이 조회 결과에서 누락되지 않는지 `start_time`/`end_time` 조건으로 검증.
 - 의존성: [ ] DB-07, DB-11 · 근거: BR-03
 
 #### Backend 트랙
 
 **BE-12. team-schedule: 일정 생성 (BR-02, BR-07, ENT-05)**
-- [ ] 팀장이 제목/시간/참여자 입력 시 201, `schedules`+`schedule_participants` 트랜잭션 생성(SC-03).
-- [ ] 팀원 호출 시 403, 미생성(SC-03 E1).
-- [ ] `team_id`는 요청 팀으로 고정(BR-07).
-- [ ] 참여자가 팀 비소속이면 400.
-- 의존성: [ ] BE-04, BE-08, BE-09 · 근거: BR-02, BR-07, SC-03
+- [x] 팀장이 제목/시간/참여자 입력 시 201, `schedules`+`schedule_participants` 트랜잭션 생성(SC-03).
+- [x] 팀원 호출 시 403, 미생성(SC-03 E1).
+- [x] `team_id`는 요청 팀으로 고정(BR-07).
+- [x] 참여자가 팀 비소속이면 400.
+- 의존성: [x] BE-04, BE-08, BE-09 · 근거: BR-02, BR-07, SC-03
 
 **BE-13. team-schedule: 일정 수정/삭제 (BR-02, BR-03)**
-- [ ] 팀장이 수정 시 200 + 갱신, 삭제 시 204 + 참여자 레코드 함께 삭제(SC-05).
-- [ ] 팀원 호출 시 403(SC-05 E1).
-- [ ] 비소속 팀 scheduleId는 403/404(BR-16).
-- [ ] `schedule.service.js`가 `updateScheduleFields()`를 change-request 모듈이 재사용 가능하도록 공개.
-- 의존성: [ ] BE-12, BE-04 · 근거: BR-02, BR-03, SC-05
+- [x] 팀장이 수정 시 200 + 갱신, 삭제 시 204 + 참여자 레코드 함께 삭제(SC-05).
+- [x] 팀원 호출 시 403(SC-05 E1).
+- [x] 비소속 팀 scheduleId는 403/404(BR-16).
+- [x] `schedule.service.js`가 `updateScheduleFields()`를 change-request 모듈이 재사용 가능하도록 공개.
+- 의존성: [x] BE-12, BE-04 · 근거: BR-02, BR-03, SC-05
 
 **BE-14. team-schedule: 월/주/일 조회 (BR-03, BR-16)**
-- [ ] view=month/week/day 각각 200 응답(SC-04).
-- [ ] 팀원도 200이나 `canEdit=false` 필드 포함(BR-03).
-- [ ] 비소속 팀은 403, 데이터 미포함(SC-04 E1, BR-16).
-- 의존성: [ ] BE-04, BE-12 · 근거: BR-03, BR-16, SC-04
+- [x] view=month/week/day 각각 200 응답(SC-04).
+- [x] 팀원도 200이나 `canEdit=false` 필드 포함(BR-03).
+- [x] 비소속 팀은 403, 데이터 미포함(SC-04 E1, BR-16).
+- 의존성: [x] BE-04, BE-12 · 근거: BR-03, BR-16, SC-04
 
 **BE-15. BR-16 접근제어 단위 테스트**
-- [ ] 비소속 사용자 조회 403, 소속 사용자는 정상 데이터 반환 테스트.
-- [ ] scheduleId 등 teamId 미포함 리소스도 소속 검증 동작 테스트.
-- 의존성: [ ] BE-04, BE-14 · 근거: BR-16
+- [x] 비소속 사용자 조회 403, 소속 사용자는 정상 데이터 반환 테스트.
+- [x] scheduleId 등 teamId 미포함 리소스도 소속 검증 동작 테스트.
+- 의존성: [x] BE-04, BE-14 · 근거: BR-16
 
 #### Frontend 트랙
 
@@ -324,7 +324,7 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 
 **DB-15. messages 일자별 이력 조회 성능 검증**
 - [ ] `WHERE team_id=? AND created_at 범위` 쿼리가 `idx_messages_team_id_created_at` 사용 확인.
-- [ ] 시드 데이터 기준 일반/변경요청/시스템 메시지가 작성일시 순 정렬 확인(SC-12).
+- [x] 시드 데이터 기준 일반/변경요청/시스템 메시지가 작성일시 순 정렬 확인(SC-12).
 - 의존성: [ ] DB-09, DB-11, DB-12 · 근거: SC-12
 
 **DB-14. ~~BR-06 불변성 트리거~~ → 채택하지 않음**
@@ -333,19 +333,19 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### Backend 트랙
 
 **BE-16. chat: 메시지 작성 (BR-01, BR-06)** *(DB-14를 대체하는 단독 소유 Task)*
-- [ ] 소속 팀원 전송 시 201, `messages`(type=general) 생성(SC-12).
-- [ ] 미인증 401, 비소속 팀 403.
-- [ ] 빈 본문 400.
-- [ ] **메시지 수정/삭제 엔드포인트가 존재하지 않음**을 라우트 목록으로 확인(BR-06).
-- [ ] `message.service.js`가 `createSystemMessage()`를 다른 모듈에 공개.
+- [x] 소속 팀원 전송 시 201, `messages`(type=general) 생성(SC-12).
+- [x] 미인증 401, 비소속 팀 403.
+- [x] 빈 본문 400.
+- [x] **메시지 수정/삭제 엔드포인트가 존재하지 않음**을 라우트 목록으로 확인(BR-06).
+- [x] `message.service.js`가 `createSystemMessage()`를 다른 모듈에 공개.
 - 의존성: [ ] DB-02, BE-03, BE-04 · 근거: BR-01, BR-06, SC-12
 
 **BE-17. chat: 일자별 이력 조회 + 폴링 지원 (BR-06, BR-16)**
-- [ ] date 파라미터로 일자별 메시지가 작성일시 순 반환(SC-12).
-- [ ] `since` 파라미터로 신규 메시지만 재조회하는 폴링 지원(WebSocket 미도입).
-- [ ] 비소속 팀 403(SC-12 E1).
-- [ ] 과거 일자 조회도 동일 동작(BR-06).
-- 의존성: [ ] BE-16, BE-04 · 근거: BR-06, BR-16, SC-12, PRD 9장
+- [x] date 파라미터로 일자별 메시지가 작성일시 순 반환(SC-12).
+- [x] `since` 파라미터로 신규 메시지만 재조회하는 폴링 지원(WebSocket 미도입).
+- [x] 비소속 팀 403(SC-12 E1).
+- [x] 과거 일자 조회도 동일 동작(BR-06).
+- 의존성: [x] BE-16, BE-04 · 근거: BR-06, BR-16, SC-12, PRD 9장
 
 #### Frontend 트랙
 
@@ -384,44 +384,44 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### Backend 트랙
 
 **BE-18. change-request: 변경 요청 제기 (BR-04, BR-10)**
-- [ ] 참여자인 팀원이 요청 시 201, `schedule_change_requests`(pending)+`messages`(change_request) 생성(SC-06).
-- [ ] 비참여자 요청 시 400/403, 미생성(SC-06 E1, BR-10).
-- [ ] 비소속 팀 scheduleId는 403/404(BR-16).
-- 의존성: [ ] BE-12, BE-16, BE-04 · 근거: BR-04, BR-10, SC-06
+- [x] 참여자인 팀원이 요청 시 201, `schedule_change_requests`(pending)+`messages`(change_request) 생성(SC-06).
+- [x] 비참여자 요청 시 400/403, 미생성(SC-06 E1, BR-10).
+- [x] 비소속 팀 scheduleId는 403/404(BR-16).
+- 의존성: [x] BE-12, BE-16, BE-04 · 근거: BR-04, BR-10, SC-06
 
 **BE-19. change-request: 목록/상세 조회**
-- [ ] 팀/일정 단위 요청 목록(상태 포함) 조회 가능.
-- [ ] 상태별 필터링 지원.
-- [ ] 비소속 팀 403(BR-16).
-- 의존성: [ ] BE-18 · 근거: SC-07/08/09 전제조건
+- [x] 팀/일정 단위 요청 목록(상태 포함) 조회 가능.
+- [x] 상태별 필터링 지원.
+- [x] 비소속 팀 403(BR-16).
+- 의존성: [x] BE-18 · 근거: SC-07/08/09 전제조건
 
 **BE-20. change-request: 승인 처리 (BR-05, BR-11, BR-13)** *(DB-16, DB-18 일부를 대체하는 단독 소유 Task)*
-- [ ] 팀장 승인 시 200, 상태 approved, 제안 값이 Schedule에 반영(SC-07).
-- [ ] 동일 Schedule의 다른 대기 요청이 모두 자동 rejected 전환(SC-09, BR-11).
-- [ ] 승인/자동거절 각각에 시스템 메시지 생성(SC-07, SC-09, BR-13).
-- [ ] 팀원 호출 403(SC-07 E1).
-- [ ] 이미 처리된 요청 재승인 시 409(SC-07 E2, SC-09 E1).
-- [ ] 전체가 단일 DB 트랜잭션으로 원자적 처리.
-- 의존성: [ ] BE-18, BE-19, BE-13(`updateScheduleFields()`), BE-16/17(`createSystemMessage()`) · 근거: BR-05, BR-11, BR-13, SC-07, SC-09
+- [x] 팀장 승인 시 200, 상태 approved, 제안 값이 Schedule에 반영(SC-07).
+- [x] 동일 Schedule의 다른 대기 요청이 모두 자동 rejected 전환(SC-09, BR-11).
+- [x] 승인/자동거절 각각에 시스템 메시지 생성(SC-07, SC-09, BR-13).
+- [x] 팀원 호출 403(SC-07 E1).
+- [x] 이미 처리된 요청 재승인 시 409(SC-07 E2, SC-09 E1).
+- [x] 전체가 단일 DB 트랜잭션으로 원자적 처리.
+- 의존성: [x] BE-18, BE-19, BE-13(`updateScheduleFields()`), BE-16/17(`createSystemMessage()`) · 근거: BR-05, BR-11, BR-13, SC-07, SC-09
 
 **BE-21. change-request: 거절 처리 (BR-05, BR-13)** *(DB-18 일부를 대체하는 단독 소유 Task)*
-- [ ] 팀장 거절 시 200, 상태 rejected, Schedule 불변(SC-08).
-- [ ] 거절 시스템 메시지 생성(BR-13).
-- [ ] 타 팀 팀장 거절 시도 403(SC-08 E1).
-- [ ] 재거절 시도 409.
-- 의존성: [ ] BE-18, BE-19, BE-04, BE-16/17 · 근거: BR-05, BR-13, SC-08
+- [x] 팀장 거절 시 200, 상태 rejected, Schedule 불변(SC-08).
+- [x] 거절 시스템 메시지 생성(BR-13).
+- [x] 타 팀 팀장 거절 시도 403(SC-08 E1).
+- [x] 재거절 시도 409.
+- 의존성: [x] BE-18, BE-19, BE-04, BE-16/17 · 근거: BR-05, BR-13, SC-08
 
 **BE-22. change-request: 요청 취소 (BR-12)** *(DB-17을 대체하는 단독 소유 Task)*
-- [ ] 요청자 본인이 대기 상태 취소 시 200, 상태 cancelled(SC-10).
-- [ ] 취소 시스템 메시지 생성, 팀장 처리 목록에서 제외(SC-10).
-- [ ] 이미 처리된 요청 취소 시도 409(SC-10 E1, BR-12).
-- [ ] 본인 아닌 사용자 취소 시도 403(SC-10 E2).
-- 의존성: [ ] BE-18, BE-19 · 근거: BR-12, SC-10
+- [x] 요청자 본인이 대기 상태 취소 시 200, 상태 cancelled(SC-10).
+- [x] 취소 시스템 메시지 생성, 팀장 처리 목록에서 제외(SC-10).
+- [x] 이미 처리된 요청 취소 시도 409(SC-10 E1, BR-12).
+- [x] 본인 아닌 사용자 취소 시도 403(SC-10 E2).
+- 의존성: [x] BE-18, BE-19 · 근거: BR-12, SC-10
 
 **BE-23. 모듈 간 서비스 연동 배선**
-- [ ] `change-request.service.js`가 `schedule.queries.js`/`message.queries.js`를 직접 호출하지 않고 각 모듈 Service의 공개 함수만 호출(코드 리뷰 확인).
-- [ ] BE-20 처리 시 실제로 team-schedule/chat Service 경유 동작을 통합 테스트로 확인.
-- 의존성: [ ] BE-13, BE-17, BE-20, BE-21 · 근거: `5-arch-diagram.md`, `6-project-structure.md`
+- [x] `change-request.service.js`가 `schedule.queries.js`/`message.queries.js`를 직접 호출하지 않고 각 모듈 Service의 공개 함수만 호출(코드 리뷰 확인).
+- [x] BE-20 처리 시 실제로 team-schedule/chat Service 경유 동작을 통합 테스트로 확인.
+- 의존성: [x] BE-13, BE-17, BE-20, BE-21 · 근거: `5-arch-diagram.md`, `6-project-structure.md`
 
 **BE-24. BR-11/BR-12 동시성 단위 테스트**
 - [ ] 대기 요청 A 승인 시 B가 자동 rejected 전환 테스트(BR-11, SC-09 A1 포함).
