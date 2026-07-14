@@ -1196,6 +1196,202 @@ describe('change-request.service — BE-21 변경 요청 거절 처리 (BR-05/BR
   });
 });
 
+describe('change-request.service — BE-22 변경 요청 취소 (BR-12)', () => {
+  const createdUserIds = [];
+  const createdTeamIds = [];
+
+  afterAll(async () => {
+    for (const teamId of createdTeamIds) {
+      await cleanupTeam(teamId);
+    }
+    for (const id of createdUserIds) {
+      await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+  });
+
+  async function setupTeam({ memberCount = 2 } = {}) {
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const leaderId = await createUser('팀장', `cr-cancel-leader-${suffix}@test.com`);
+    createdUserIds.push(leaderId);
+    const teamId = await createTeamWithLeader(`변경요청취소테스트팀-${suffix}`, leaderId);
+    createdTeamIds.push(teamId);
+
+    const memberIds = [];
+    for (let i = 0; i < memberCount; i += 1) {
+      const memberId = await createUser(`팀원${i}`, `cr-cancel-member${i}-${suffix}@test.com`);
+      createdUserIds.push(memberId);
+      await addMembership(teamId, memberId, 'member');
+      memberIds.push(memberId);
+    }
+
+    return { leaderId, teamId, memberIds };
+  }
+
+  test('요청자 본인이 취소하면 status가 cancelled, processedBy/processedAt이 채워지고 Schedule은 변경되지 않는다 (SC-10)', async () => {
+    const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 1 });
+    const memberId = memberIds[0];
+    const originalTitle = '원래 제목';
+    const originalStartAt = '2026-07-14T09:00:00.000Z';
+    const originalEndAt = '2026-07-14T10:00:00.000Z';
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: originalTitle,
+      startAt: originalStartAt,
+      endAt: originalEndAt,
+      participantUserIds: [memberId],
+    });
+
+    const cr = await changeRequestService.createChangeRequest(teamId, schedule.id, memberId, {
+      reason: '취소될 요청',
+      proposedTitle: '변경 시도 제목',
+      proposedStartAt: '2026-07-15T09:00:00.000Z',
+      proposedEndAt: '2026-07-15T10:00:00.000Z',
+    });
+
+    const result = await changeRequestService.cancelChangeRequest(teamId, cr.id, memberId);
+
+    expect(result.id).toBe(cr.id);
+    expect(result.status).toBe('cancelled');
+    expect(result.processedBy).toBe(memberId);
+    expect(result.processedAt).not.toBeNull();
+
+    const crRow = await getChangeRequestRow(cr.id);
+    expect(crRow.status).toBe('cancelled');
+    expect(crRow.processedBy).toBe(memberId);
+
+    const scheduleRow = await getScheduleRow(schedule.id);
+    expect(scheduleRow.title).toBe(originalTitle);
+    expect(new Date(scheduleRow.startAt).toISOString()).toBe(originalStartAt);
+    expect(new Date(scheduleRow.endAt).toISOString()).toBe(originalEndAt);
+  });
+
+  test('취소 시 시스템 메시지가 정확히 1건 생성되고, 팀장의 pending 목록 조회에서 제외된다 (SC-10)', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+    const cr = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: '취소 대상',
+    });
+
+    const beforeMsgCount = await countMessagesByTeam(teamId);
+    await changeRequestService.cancelChangeRequest(teamId, cr.id, leaderId);
+    const afterMsgCount = await countMessagesByTeam(teamId);
+
+    expect(afterMsgCount).toBe(beforeMsgCount + 1);
+    const recentSystemMessages = await getRecentSystemMessages(teamId, 1);
+    expect(recentSystemMessages.length).toBe(1);
+    expect(recentSystemMessages[0].authorId).toBeNull();
+    expect(recentSystemMessages[0].messageType).toBe('system');
+
+    const pendingList = await changeRequestService.listChangeRequests(teamId, { status: 'pending' });
+    expect(pendingList.some((item) => item.id === cr.id)).toBe(false);
+  });
+
+  test('요청자 본인이 아닌 사용자(같은 팀 팀원)가 취소 시도하면 403이 발생하고 아무 것도 변경되지 않는다 (SC-10 E2)', async () => {
+    const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 2 });
+    const [requester, other] = memberIds;
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [requester, other],
+    });
+    const cr = await changeRequestService.createChangeRequest(teamId, schedule.id, requester, {
+      reason: '본인 요청',
+    });
+
+    const beforeMsgCount = await countMessagesByTeam(teamId);
+
+    await expect(
+      changeRequestService.cancelChangeRequest(teamId, cr.id, other),
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    const crRow = await getChangeRequestRow(cr.id);
+    expect(crRow.status).toBe('pending');
+    expect(crRow.processedBy).toBeNull();
+    expect(await countMessagesByTeam(teamId)).toBe(beforeMsgCount);
+  });
+
+  test('요청자 본인이 아닌 팀장이 취소 시도해도 403이 발생한다 (BR-12는 역할 무관, 본인 여부만 검증)', async () => {
+    const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 1 });
+    const memberId = memberIds[0];
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [memberId],
+    });
+    const cr = await changeRequestService.createChangeRequest(teamId, schedule.id, memberId, {
+      reason: '팀원 요청',
+    });
+
+    await expect(
+      changeRequestService.cancelChangeRequest(teamId, cr.id, leaderId),
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    const crRow = await getChangeRequestRow(cr.id);
+    expect(crRow.status).toBe('pending');
+  });
+
+  test('존재하지 않는 requestId면 404가 발생한다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const nonExistentId = 999999999;
+
+    await expect(
+      changeRequestService.cancelChangeRequest(teamId, nonExistentId, leaderId),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  test('다른 팀 소속 요청을 자신의 teamId로 취소 시도하면 404가 발생한다 (BR-16 팀 경계)', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const scheduleA = await scheduleService.createSchedule('leader', teamA.teamId, teamA.leaderId, {
+      title: 'A팀 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [teamA.leaderId],
+    });
+    const crA = await changeRequestService.createChangeRequest(
+      teamA.teamId,
+      scheduleA.id,
+      teamA.leaderId,
+      { reason: 'A팀 요청' },
+    );
+
+    await expect(
+      changeRequestService.cancelChangeRequest(teamB.teamId, crA.id, teamA.leaderId),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  test('이미 처리된(pending 아닌) 요청을 재취소 시도하면 409이며 아무 것도 변경되지 않는다 (SC-10 E1)', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+    const cr = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: '이미 처리됨',
+    });
+    await setChangeRequestStatus(cr.id, 'approved');
+
+    const beforeMsgCount = await countMessagesByTeam(teamId);
+
+    await expect(
+      changeRequestService.cancelChangeRequest(teamId, cr.id, leaderId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    const crRow = await getChangeRequestRow(cr.id);
+    expect(crRow.status).toBe('approved');
+    expect(await countMessagesByTeam(teamId)).toBe(beforeMsgCount);
+  });
+});
+
 afterAll(async () => {
   await pool.end();
 });

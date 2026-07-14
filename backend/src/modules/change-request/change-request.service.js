@@ -192,10 +192,50 @@ async function rejectChangeRequest(actorRole, teamId, requestId, rejecterId) {
   }
 }
 
+// BE-22 / BR-12 / SC-10: 요청자 본인이 대기 중인 자신의 요청을 취소한다.
+// Schedule은 변경하지 않고 상태만 cancelled로 전환하며, 처리 결과를 시스템 메시지로 남긴다.
+async function cancelChangeRequest(teamId, requestId, actorUserId) {
+  const target = await changeRequestQueries.findById(pool, requestId);
+  if (!target || Number(target.teamId) !== Number(teamId)) {
+    throw new NotFoundError('변경 요청을 찾을 수 없습니다');
+  }
+  if (Number(target.requesterId) !== Number(actorUserId)) {
+    throw new ForbiddenError('본인이 요청한 건만 취소할 수 있습니다');
+  }
+  if (target.status !== CHANGE_REQUEST_STATUS.PENDING) {
+    throw new ConflictError('이미 처리된 요청입니다');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const cancelledChangeRequest = await changeRequestQueries.updateStatus(client, requestId, {
+      status: CHANGE_REQUEST_STATUS.CANCELLED,
+      processedBy: actorUserId,
+    });
+
+    await messageService.createSystemMessage(
+      client,
+      teamId,
+      `변경 요청이 취소되었습니다: ${target.reason}`,
+    );
+
+    await client.query('COMMIT');
+    return cancelledChangeRequest;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createChangeRequest,
   listChangeRequests,
   getChangeRequestById,
   approveChangeRequest,
   rejectChangeRequest,
+  cancelChangeRequest,
 };

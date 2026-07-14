@@ -98,4 +98,22 @@ router.patch(
   },
 );
 
+// BE-22 / BR-12 / SC-10: 변경 요청 취소 (요청자 본인만 가능)
+router.patch(
+  '/:teamId/change-requests/:requestId/cancel',
+  teamAccessMiddleware,
+  async (req, res, next) => {
+    try {
+      const changeRequest = await changeRequestService.cancelChangeRequest(
+        req.teamMembership.teamId,
+        Number(req.params.requestId),
+        req.user.id,
+      );
+      res.status(200).json(changeRequest);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 module.exports = router;
