@@ -4,6 +4,8 @@ const scheduleService = require('../team-schedule/schedule.service');
 const messageService = require('../chat/message.service');
 const changeRequestQueries = require('./change-request.queries');
 
+const VALID_STATUSES = ['pending', 'approved', 'rejected', 'cancelled'];
+
 // BE-18 / BR-04 / BR-10 / SC-06: 참여자가 자신이 지정된 일정에 대해 변경을 요청한다.
 // ScheduleChangeRequest(status=pending)와 Message(messageType=change_request)를 한 트랜잭션으로 생성한다.
 // BR-10은 역할(팀장/팀원) 무관, 참여자 여부만 판단한다 — 팀장이 자기 일정의 참여자로 지정돼 있어도 허용.
@@ -47,4 +49,33 @@ async function createChangeRequest(teamId, scheduleId, requesterId, body) {
   }
 }
 
-module.exports = { createChangeRequest };
+// BE-19 / BR-16: 팀 내 변경 요청 목록 조회 (일정/상태 필터)
+async function listChangeRequests(teamId, { scheduleId, status } = {}) {
+  if (status !== undefined && !VALID_STATUSES.includes(status)) {
+    throw new BadRequestError('status는 pending, approved, rejected, cancelled 중 하나여야 합니다');
+  }
+  if (scheduleId !== undefined && Number.isNaN(Number(scheduleId))) {
+    throw new BadRequestError('scheduleId는 숫자여야 합니다');
+  }
+
+  return changeRequestQueries.findByTeam(pool, teamId, {
+    scheduleId: scheduleId !== undefined ? Number(scheduleId) : null,
+    status: status ?? null,
+  });
+}
+
+// BE-19 / BR-16: 변경 요청 단건 조회
+async function getChangeRequestById(teamId, requestId) {
+  const row = await changeRequestQueries.findById(pool, requestId);
+  if (!row) {
+    throw new NotFoundError('변경 요청을 찾을 수 없습니다');
+  }
+  if (Number(row.teamId) !== Number(teamId)) {
+    throw new NotFoundError('변경 요청을 찾을 수 없습니다');
+  }
+
+  const { teamId: _teamId, ...changeRequest } = row;
+  return changeRequest;
+}
+
+module.exports = { createChangeRequest, listChangeRequests, getChangeRequestById };

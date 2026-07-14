@@ -79,6 +79,10 @@ async function getMessageRow(id) {
   return result.rows[0];
 }
 
+async function setChangeRequestStatus(id, status) {
+  await pool.query('UPDATE schedule_change_requests SET status = $1 WHERE id = $2', [status, id]);
+}
+
 describe('change-request.service — BE-18 변경 요청 제기 (BR-10)', () => {
   const createdUserIds = [];
   const createdTeamIds = [];
@@ -90,7 +94,6 @@ describe('change-request.service — BE-18 변경 요청 제기 (BR-10)', () => 
     for (const id of createdUserIds) {
       await pool.query('DELETE FROM users WHERE id = $1', [id]);
     }
-    await pool.end();
   });
 
   async function setupTeam({ memberCount = 2 } = {}) {
@@ -404,4 +407,276 @@ describe('change-request.service — BE-18 변경 요청 제기 (BR-10)', () => 
     expect(await countMessagesByTeam(teamA.teamId)).toBe(beforeMsgCountA);
     expect(await countChangeRequestsByRequester(teamA.leaderId)).toBe(0);
   });
+});
+
+describe('change-request.service — BE-19 목록/상세 조회 (BR-16)', () => {
+  const createdUserIds = [];
+  const createdTeamIds = [];
+
+  afterAll(async () => {
+    for (const teamId of createdTeamIds) {
+      await cleanupTeam(teamId);
+    }
+    for (const id of createdUserIds) {
+      await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+  });
+
+  async function setupTeam({ memberCount = 2 } = {}) {
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const leaderId = await createUser('팀장', `cr-list-leader-${suffix}@test.com`);
+    createdUserIds.push(leaderId);
+    const teamId = await createTeamWithLeader(`변경요청조회테스트팀-${suffix}`, leaderId);
+    createdTeamIds.push(teamId);
+
+    const memberIds = [];
+    for (let i = 0; i < memberCount; i += 1) {
+      const memberId = await createUser(`팀원${i}`, `cr-list-member${i}-${suffix}@test.com`);
+      createdUserIds.push(memberId);
+      await addMembership(teamId, memberId, 'member');
+      memberIds.push(memberId);
+    }
+
+    return { leaderId, teamId, memberIds };
+  }
+
+  test('목록 조회: 특정 팀 소속 change-request만 반환되고 다른 팀 요청은 섞이지 않는다', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const scheduleA = await scheduleService.createSchedule('leader', teamA.teamId, teamA.leaderId, {
+      title: 'A팀 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [teamA.leaderId],
+    });
+    const scheduleB = await scheduleService.createSchedule('leader', teamB.teamId, teamB.leaderId, {
+      title: 'B팀 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [teamB.leaderId],
+    });
+
+    const crA = await changeRequestService.createChangeRequest(
+      teamA.teamId,
+      scheduleA.id,
+      teamA.leaderId,
+      { reason: 'A팀 요청' },
+    );
+    const crB = await changeRequestService.createChangeRequest(
+      teamB.teamId,
+      scheduleB.id,
+      teamB.leaderId,
+      { reason: 'B팀 요청' },
+    );
+
+    const listA = await changeRequestService.listChangeRequests(teamA.teamId);
+    const listB = await changeRequestService.listChangeRequests(teamB.teamId);
+
+    expect(listA.map((cr) => cr.id)).toEqual([crA.id]);
+    expect(listB.map((cr) => cr.id)).toEqual([crB.id]);
+    expect(listA.some((cr) => cr.id === crB.id)).toBe(false);
+    expect(listB.some((cr) => cr.id === crA.id)).toBe(false);
+  });
+
+  test('목록 정렬: 생성 순서대로 createdAt 오름차순으로 정렬되어 반환된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+
+    const cr1 = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: '첫번째 요청',
+    });
+    const cr2 = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: '두번째 요청',
+    });
+    const cr3 = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: '세번째 요청',
+    });
+
+    const list = await changeRequestService.listChangeRequests(teamId);
+
+    expect(list.map((cr) => cr.id)).toEqual([cr1.id, cr2.id, cr3.id]);
+    for (let i = 1; i < list.length; i += 1) {
+      expect(new Date(list[i].createdAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(list[i - 1].createdAt).getTime(),
+      );
+    }
+  });
+
+  test('scheduleId 필터: 지정한 일정에 속한 change-request만 반환된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const schedule1 = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정1',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+    const schedule2 = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정2',
+      startAt: '2026-07-14T11:00:00.000Z',
+      endAt: '2026-07-14T12:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+
+    const cr1 = await changeRequestService.createChangeRequest(teamId, schedule1.id, leaderId, {
+      reason: '일정1 요청',
+    });
+    await changeRequestService.createChangeRequest(teamId, schedule2.id, leaderId, {
+      reason: '일정2 요청',
+    });
+
+    const filtered = await changeRequestService.listChangeRequests(teamId, {
+      scheduleId: schedule1.id,
+    });
+
+    expect(filtered.map((cr) => cr.id)).toEqual([cr1.id]);
+    expect(filtered.every((cr) => cr.scheduleId === schedule1.id)).toBe(true);
+  });
+
+  test('status 필터: pending/approved/rejected/cancelled 각각 정확히 필터링된다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+
+    const crPending = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: 'pending 요청',
+    });
+    const crApproved = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: 'approved 요청',
+    });
+    const crRejected = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: 'rejected 요청',
+    });
+    const crCancelled = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: 'cancelled 요청',
+    });
+
+    await setChangeRequestStatus(crApproved.id, 'approved');
+    await setChangeRequestStatus(crRejected.id, 'rejected');
+    await setChangeRequestStatus(crCancelled.id, 'cancelled');
+
+    const pendingList = await changeRequestService.listChangeRequests(teamId, { status: 'pending' });
+    const approvedList = await changeRequestService.listChangeRequests(teamId, { status: 'approved' });
+    const rejectedList = await changeRequestService.listChangeRequests(teamId, { status: 'rejected' });
+    const cancelledList = await changeRequestService.listChangeRequests(teamId, {
+      status: 'cancelled',
+    });
+
+    expect(pendingList.map((cr) => cr.id)).toEqual([crPending.id]);
+    expect(approvedList.map((cr) => cr.id)).toEqual([crApproved.id]);
+    expect(rejectedList.map((cr) => cr.id)).toEqual([crRejected.id]);
+    expect(cancelledList.map((cr) => cr.id)).toEqual([crCancelled.id]);
+  });
+
+  test('잘못된 status 값을 전달하면 400 에러가 발생한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+
+    await expect(
+      changeRequestService.listChangeRequests(teamId, { status: 'invalid-status' }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test('change-request가 없는 팀은 빈 배열을 반환한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+
+    const list = await changeRequestService.listChangeRequests(teamId);
+
+    expect(list).toEqual([]);
+  });
+
+  test('다른 팀 소속 scheduleId로 필터링하면 빈 배열을 반환한다 (에러 아님)', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const scheduleB = await scheduleService.createSchedule('leader', teamB.teamId, teamB.leaderId, {
+      title: 'B팀 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [teamB.leaderId],
+    });
+    await changeRequestService.createChangeRequest(teamB.teamId, scheduleB.id, teamB.leaderId, {
+      reason: 'B팀 요청',
+    });
+
+    const list = await changeRequestService.listChangeRequests(teamA.teamId, {
+      scheduleId: scheduleB.id,
+    });
+
+    expect(list).toEqual([]);
+  });
+
+  test('상세 조회 성공: 생성한 요청과 동일한 필드값을 반환하며 teamId 필드는 없다', async () => {
+    const { leaderId, teamId } = await setupTeam({ memberCount: 0 });
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [leaderId],
+    });
+
+    const created = await changeRequestService.createChangeRequest(teamId, schedule.id, leaderId, {
+      reason: '상세 조회 테스트',
+    });
+
+    const detail = await changeRequestService.getChangeRequestById(teamId, created.id);
+
+    expect(detail).toMatchObject({
+      id: created.id,
+      scheduleId: schedule.id,
+      messageId: created.messageId,
+      requesterId: leaderId,
+      proposedTitle: null,
+      proposedStartAt: null,
+      proposedEndAt: null,
+      reason: '상세 조회 테스트',
+      status: 'pending',
+      processedBy: null,
+      processedAt: null,
+    });
+    expect(detail).not.toHaveProperty('teamId');
+  });
+
+  test('존재하지 않는 requestId면 404가 발생한다', async () => {
+    const { teamId } = await setupTeam({ memberCount: 0 });
+    const nonExistentId = 999999999;
+
+    await expect(
+      changeRequestService.getChangeRequestById(teamId, nonExistentId),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  test('다른 팀 소속 요청을 자신의 teamId로 조회하면 404가 발생한다 (BR-16)', async () => {
+    const teamA = await setupTeam({ memberCount: 0 });
+    const teamB = await setupTeam({ memberCount: 0 });
+
+    const scheduleB = await scheduleService.createSchedule('leader', teamB.teamId, teamB.leaderId, {
+      title: 'B팀 일정',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [teamB.leaderId],
+    });
+    const crB = await changeRequestService.createChangeRequest(
+      teamB.teamId,
+      scheduleB.id,
+      teamB.leaderId,
+      { reason: 'B팀 요청' },
+    );
+
+    await expect(
+      changeRequestService.getChangeRequestById(teamA.teamId, crB.id),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+afterAll(async () => {
+  await pool.end();
 });
