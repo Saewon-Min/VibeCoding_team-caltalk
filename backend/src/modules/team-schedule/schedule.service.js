@@ -204,6 +204,22 @@ async function getScheduleById(scheduleId) {
   return scheduleQueries.findScheduleById(pool, scheduleId);
 }
 
+// SC-04: 일정 상세 조회(참여자 포함). swagger.json에 문서화된 GET /schedules/{scheduleId}가
+// 라우팅되어 있지 않던 누락을 보강한다(BE-25 QA에서 발견). teamId는 teamAccessMiddleware가
+// 검증한 값을 신뢰하며(BR-16), 대상 일정이 해당 팀 소속이 아니면 404를 반환한다.
+async function getScheduleDetail(teamId, scheduleId) {
+  const schedule = await scheduleQueries.findScheduleById(pool, scheduleId);
+  if (!schedule || Number(schedule.teamId) !== Number(teamId)) {
+    throw new NotFoundError('일정을 찾을 수 없습니다');
+  }
+
+  const participantIds = await scheduleQueries.getParticipantUserIds(pool, scheduleId);
+  const participants =
+    participantIds.length > 0 ? await scheduleQueries.getUsersByIds(pool, participantIds) : [];
+
+  return { ...schedule, participants };
+}
+
 module.exports = {
   createSchedule,
   updateScheduleFields,
@@ -211,4 +227,5 @@ module.exports = {
   getSchedules,
   computeDateRange,
   getScheduleById,
+  getScheduleDetail,
 };
