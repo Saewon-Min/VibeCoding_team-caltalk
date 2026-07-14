@@ -424,10 +424,10 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [x] BE-13, BE-17, BE-20, BE-21 · 근거: `5-arch-diagram.md`, `6-project-structure.md`
 
 **BE-24. BR-11/BR-12 동시성 단위 테스트**
-- [ ] 대기 요청 A 승인 시 B가 자동 rejected 전환 테스트(BR-11, SC-09 A1 포함).
-- [ ] 이미 거절된 요청 재승인 시 409/예외 테스트.
-- [ ] 비대기 상태 취소, 타인 취소 시도가 거부되는 테스트(BR-12).
-- 의존성: [ ] BE-20, BE-22 · 근거: BR-11, BR-12
+- [x] 대기 요청 A 승인 시 B가 자동 rejected 전환 테스트(BR-11, SC-09 A1 포함).
+- [x] 이미 거절된 요청 재승인 시 409/예외 테스트.
+- [x] 비대기 상태 취소, 타인 취소 시도가 거부되는 테스트(BR-12).
+- 의존성: [x] BE-20, BE-22 · 근거: BR-11, BR-12
 
 #### Frontend 트랙
 
@@ -479,11 +479,11 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### DB 트랙
 
 **DB-19. DB 레벨 제약 통합 검증** *(범위 축소: 트리거 검증 항목 제외, 구조적 제약만 재검증)*
-- [ ] `users.email`, `team_memberships(team_id,user_id)`, `schedule_participants(schedule_id,user_id)`, `schedule_change_requests.message_id` 4개 UNIQUE 제약을 위반 INSERT로 재확인.
-- [ ] `schedules.end_time > start_time`, `messages` type-author 조합 CHECK 제약을 위반 INSERT로 재확인.
-- [ ] BR-06/09/11/12/13(구 트리거 대상)은 DB가 아닌 **BE-25**(백엔드 통합 QA)에서 검증됨을 확인 — 중복 검증 불필요.
-- [ ] 발견된 결함은 새 마이그레이션 파일로 추가, 기존 마이그레이션 파일은 수정하지 않음.
-- 의존성: [ ] DB-05, DB-07, DB-09, DB-10 · 근거: PRD 10장 Day5
+- [x] `users.email`, `team_memberships(team_id,user_id)`, `schedule_participants(schedule_id,user_id)`, `schedule_change_requests.message_id` 4개 UNIQUE 제약을 위반 INSERT로 재확인.
+- [x] `schedules.end_time > start_time`, `messages` type-author 조합 CHECK 제약을 위반 INSERT로 재확인.
+- [x] BR-06/09/11/12/13(구 트리거 대상)은 DB가 아닌 **BE-25**(백엔드 통합 QA)에서 검증됨을 확인 — 중복 검증 불필요.
+- [x] 발견된 결함은 새 마이그레이션 파일로 추가, 기존 마이그레이션 파일은 수정하지 않음(결함 미발견으로 신규 마이그레이션 없음).
+- 의존성: [x] DB-05, DB-07, DB-09, DB-10 · 근거: PRD 10장 Day5
 
 #### Backend 트랙
 
