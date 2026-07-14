@@ -1,5 +1,11 @@
 const { pool } = require('../../db/pool');
-const { BadRequestError, ForbiddenError, NotFoundError } = require('../../shared/errors');
+const {
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+} = require('../../shared/errors');
+const { ROLE, CHANGE_REQUEST_STATUS } = require('../../shared/constants');
 const scheduleService = require('../team-schedule/schedule.service');
 const messageService = require('../chat/message.service');
 const changeRequestQueries = require('./change-request.queries');
@@ -78,4 +84,77 @@ async function getChangeRequestById(teamId, requestId) {
   return changeRequest;
 }
 
-module.exports = { createChangeRequest, listChangeRequests, getChangeRequestById };
+// BE-20 / BR-05 / BR-11 / BR-13 / SC-07 / SC-09: 팀장이 변경 요청을 승인한다.
+// 승인 시 일정에 제안 내용을 반영하고, 시스템 메시지를 남기며,
+// 동일 일정의 나머지 대기 중인 요청은 모두 자동 거절 처리한다(BR-11).
+async function approveChangeRequest(actorRole, teamId, requestId, approverId) {
+  if (actorRole !== ROLE.LEADER) {
+    throw new ForbiddenError('요청 승인 권한이 없습니다');
+  }
+
+  const target = await changeRequestQueries.findById(pool, requestId);
+  if (!target || Number(target.teamId) !== Number(teamId)) {
+    throw new NotFoundError('변경 요청을 찾을 수 없습니다');
+  }
+  if (target.status !== CHANGE_REQUEST_STATUS.PENDING) {
+    throw new ConflictError('이미 처리된 요청입니다');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const approvedChangeRequest = await changeRequestQueries.updateStatus(client, requestId, {
+      status: CHANGE_REQUEST_STATUS.APPROVED,
+      processedBy: approverId,
+    });
+
+    const patch = {};
+    if (target.proposedTitle !== null) patch.title = target.proposedTitle;
+    if (target.proposedStartAt !== null) patch.startAt = target.proposedStartAt;
+    if (target.proposedEndAt !== null) patch.endAt = target.proposedEndAt;
+    if (Object.keys(patch).length > 0) {
+      await scheduleService.updateScheduleFields(ROLE.LEADER, teamId, target.scheduleId, patch, {
+        client,
+      });
+    }
+
+    await messageService.createSystemMessage(
+      client,
+      teamId,
+      `변경 요청이 승인되었습니다: ${target.reason}`,
+    );
+
+    const otherPending = await changeRequestQueries.findOtherPendingByScheduleId(
+      client,
+      target.scheduleId,
+      requestId,
+    );
+    for (const other of otherPending) {
+      await changeRequestQueries.updateStatus(client, other.id, {
+        status: CHANGE_REQUEST_STATUS.REJECTED,
+        processedBy: approverId,
+      });
+      await messageService.createSystemMessage(
+        client,
+        teamId,
+        '동일 일정에 대한 다른 변경 요청이 자동으로 거절되었습니다.',
+      );
+    }
+
+    await client.query('COMMIT');
+    return approvedChangeRequest;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = {
+  createChangeRequest,
+  listChangeRequests,
+  getChangeRequestById,
+  approveChangeRequest,
+};

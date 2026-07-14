@@ -60,4 +60,23 @@ router.get(
   },
 );
 
+// BE-20 / BR-05 / BR-11 / BR-13: 변경 요청 승인
+router.patch(
+  '/:teamId/change-requests/:requestId/approve',
+  teamAccessMiddleware,
+  async (req, res, next) => {
+    try {
+      const changeRequest = await changeRequestService.approveChangeRequest(
+        req.teamMembership.role,
+        req.teamMembership.teamId,
+        Number(req.params.requestId),
+        req.user.id,
+      );
+      res.status(200).json(changeRequest);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 module.exports = router;
