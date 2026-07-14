@@ -79,4 +79,23 @@ router.patch(
   },
 );
 
+// BE-21 / BR-05 / BR-13: 변경 요청 거절
+router.patch(
+  '/:teamId/change-requests/:requestId/reject',
+  teamAccessMiddleware,
+  async (req, res, next) => {
+    try {
+      const changeRequest = await changeRequestService.rejectChangeRequest(
+        req.teamMembership.role,
+        req.teamMembership.teamId,
+        Number(req.params.requestId),
+        req.user.id,
+      );
+      res.status(200).json(changeRequest);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 module.exports = router;
