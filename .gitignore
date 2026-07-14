@@ -34,3 +34,7 @@ Thumbs.db
 # Runtime data
 *.pid
 *.seed
+
+# Local-only tool config / session artifacts
+.claude/settings.local.json
+.playwright-mcp/
