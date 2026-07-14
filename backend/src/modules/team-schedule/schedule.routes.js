@@ -38,6 +38,20 @@ router.get('/:teamId/schedules', teamAccessMiddleware, async (req, res, next) =>
   }
 });
 
+// SC-04: 팀 일정 상세 조회(참여자 포함). swagger.json에는 문서화되어 있었으나 라우팅이
+// 누락되어 있던 것을 BE-25 QA에서 발견해 보강했다.
+router.get('/:teamId/schedules/:scheduleId', teamAccessMiddleware, async (req, res, next) => {
+  try {
+    const schedule = await scheduleService.getScheduleDetail(
+      req.teamMembership.teamId,
+      Number(req.params.scheduleId),
+    );
+    res.status(200).json(schedule);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // BE-13: 팀 일정 수정 (BR-02, BR-03)
 router.patch('/:teamId/schedules/:scheduleId', teamAccessMiddleware, async (req, res, next) => {
   try {
