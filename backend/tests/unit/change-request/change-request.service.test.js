@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { pool } = require('../../../src/db/pool');
 const scheduleService = require('../../../src/modules/team-schedule/schedule.service');
+const messageService = require('../../../src/modules/chat/message.service');
 const changeRequestService = require('../../../src/modules/change-request/change-request.service');
 
 async function createUser(name, email) {
@@ -1389,6 +1390,79 @@ describe('change-request.service — BE-22 변경 요청 취소 (BR-12)', () => 
     const crRow = await getChangeRequestRow(cr.id);
     expect(crRow.status).toBe('approved');
     expect(await countMessagesByTeam(teamId)).toBe(beforeMsgCount);
+  });
+});
+
+describe('change-request.service — BE-23 모듈 간 서비스 연동 배선 검증', () => {
+  const createdUserIds = [];
+  const createdTeamIds = [];
+
+  afterAll(async () => {
+    for (const teamId of createdTeamIds) {
+      await cleanupTeam(teamId);
+    }
+    for (const id of createdUserIds) {
+      await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+  });
+
+  async function setupTeam({ memberCount = 1 } = {}) {
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const leaderId = await createUser('팀장', `cr-wiring-leader-${suffix}@test.com`);
+    createdUserIds.push(leaderId);
+    const teamId = await createTeamWithLeader(`변경요청연동테스트팀-${suffix}`, leaderId);
+    createdTeamIds.push(teamId);
+
+    const memberIds = [];
+    for (let i = 0; i < memberCount; i += 1) {
+      const memberId = await createUser(`팀원${i}`, `cr-wiring-member${i}-${suffix}@test.com`);
+      createdUserIds.push(memberId);
+      await addMembership(teamId, memberId, 'member');
+      memberIds.push(memberId);
+    }
+
+    return { leaderId, teamId, memberIds };
+  }
+
+  // BE-20 승인 처리 시 change-request.service.js가 schedule/message 테이블에 직접 SQL을 실행하는
+  // 것이 아니라 team-schedule.schedule.service.js / chat.message.service.js의 공개 함수를 통해
+  // 동작함을, 각 모듈의 실제 Service 공개 함수(getScheduleById/getMessages)로 결과를 검증한다.
+  test('승인 처리 결과가 team-schedule/chat 모듈의 공개 Service 함수를 통해 실제로 조회된다 (BR-05/BR-13)', async () => {
+    const { leaderId, teamId, memberIds } = await setupTeam({ memberCount: 1 });
+    const memberId = memberIds[0];
+    const schedule = await scheduleService.createSchedule('leader', teamId, leaderId, {
+      title: '원래 제목',
+      startAt: '2026-07-14T09:00:00.000Z',
+      endAt: '2026-07-14T10:00:00.000Z',
+      participantUserIds: [memberId],
+    });
+
+    const proposedTitle = '연동검증 변경 제목';
+    const proposedStartAt = '2026-07-15T09:00:00.000Z';
+    const proposedEndAt = '2026-07-15T10:00:00.000Z';
+
+    const cr = await changeRequestService.createChangeRequest(teamId, schedule.id, memberId, {
+      reason: '연동검증용 요청',
+      proposedTitle,
+      proposedStartAt,
+      proposedEndAt,
+    });
+
+    await changeRequestService.approveChangeRequest('leader', teamId, cr.id, leaderId);
+
+    // team-schedule.schedule.service.js의 공개 함수로 일정 갱신 위임(BR-05)을 검증한다.
+    const updatedSchedule = await scheduleService.getScheduleById(schedule.id);
+    expect(updatedSchedule.title).toBe(proposedTitle);
+    expect(new Date(updatedSchedule.startAt).toISOString()).toBe(proposedStartAt);
+    expect(new Date(updatedSchedule.endAt).toISOString()).toBe(proposedEndAt);
+
+    // chat.message.service.js의 공개 함수로 시스템 메시지 생성 위임(BR-13)을 검증한다.
+    const today = new Date().toISOString().slice(0, 10);
+    const messages = await messageService.getMessages(teamId, today);
+    const systemMessage = messages.find(
+      (msg) => msg.messageType === 'system' && msg.content === `변경 요청이 승인되었습니다: ${cr.reason}`,
+    );
+    expect(systemMessage).toBeDefined();
   });
 });
 
