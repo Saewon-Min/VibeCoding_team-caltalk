@@ -280,8 +280,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### Frontend 트랙
 
 **FE-13. schedule.api.js**
-- [ ] `getSchedules`, `createSchedule`, `updateSchedule`, `deleteSchedule` 4개 함수.
-- [ ] 403 응답을 호출부가 구분 가능한 형태로 반환.
+- [x] `getSchedules`, `createSchedule`, `updateSchedule`, `deleteSchedule` 4개 함수.
+- [x] 403 응답을 호출부가 구분 가능한 형태로 반환.
 - 의존성: [ ] FE-02, [ ] BE-12, BE-13, BE-14
 
 **FE-14. utils/ 날짜 포맷팅 유틸**
