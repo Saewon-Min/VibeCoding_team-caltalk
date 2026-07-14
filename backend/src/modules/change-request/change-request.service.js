@@ -152,9 +152,50 @@ async function approveChangeRequest(actorRole, teamId, requestId, approverId) {
   }
 }
 
+// BE-21 / BR-05 / BR-13 / SC-08: 팀장이 변경 요청을 거절한다.
+// Schedule은 변경하지 않고 상태만 rejected로 전환하며, 처리 결과를 시스템 메시지로 남긴다.
+async function rejectChangeRequest(actorRole, teamId, requestId, rejecterId) {
+  if (actorRole !== ROLE.LEADER) {
+    throw new ForbiddenError('요청 거절 권한이 없습니다');
+  }
+
+  const target = await changeRequestQueries.findById(pool, requestId);
+  if (!target || Number(target.teamId) !== Number(teamId)) {
+    throw new NotFoundError('변경 요청을 찾을 수 없습니다');
+  }
+  if (target.status !== CHANGE_REQUEST_STATUS.PENDING) {
+    throw new ConflictError('이미 처리된 요청입니다');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const rejectedChangeRequest = await changeRequestQueries.updateStatus(client, requestId, {
+      status: CHANGE_REQUEST_STATUS.REJECTED,
+      processedBy: rejecterId,
+    });
+
+    await messageService.createSystemMessage(
+      client,
+      teamId,
+      `변경 요청이 거절되었습니다: ${target.reason}`,
+    );
+
+    await client.query('COMMIT');
+    return rejectedChangeRequest;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createChangeRequest,
   listChangeRequests,
   getChangeRequestById,
   approveChangeRequest,
+  rejectChangeRequest,
 };
