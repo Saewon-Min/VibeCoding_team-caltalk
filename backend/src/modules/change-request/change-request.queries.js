@@ -62,4 +62,37 @@ async function findById(pool, requestId) {
   return result.rows[0] || null;
 }
 
-module.exports = { existsParticipant, createChangeRequest, findByTeam, findById };
+// BE-20: 승인 대상을 제외한, 동일 schedule_id의 나머지 pending 요청 id 목록 (BR-11)
+async function findOtherPendingByScheduleId(client, scheduleId, excludeId) {
+  const result = await client.query(
+    `SELECT id FROM schedule_change_requests
+      WHERE schedule_id = $1 AND status = 'pending' AND id <> $2`,
+    [scheduleId, excludeId],
+  );
+  return result.rows;
+}
+
+// BE-20/21: 상태 전이 공용 (approve/reject 모두 사용)
+async function updateStatus(client, id, { status, processedBy }) {
+  const result = await client.query(
+    `UPDATE schedule_change_requests
+        SET status = $1, processed_by = $2, processed_at = now()
+      WHERE id = $3
+      RETURNING id, schedule_id AS "scheduleId", message_id AS "messageId",
+                requester_id AS "requesterId", proposed_title AS "proposedTitle",
+                proposed_start_at AS "proposedStartAt", proposed_end_at AS "proposedEndAt",
+                reason, status, processed_by AS "processedBy", processed_at AS "processedAt",
+                created_at AS "createdAt"`,
+    [status, processedBy, id],
+  );
+  return result.rows[0];
+}
+
+module.exports = {
+  existsParticipant,
+  createChangeRequest,
+  findByTeam,
+  findById,
+  findOtherPendingByScheduleId,
+  updateStatus,
+};
