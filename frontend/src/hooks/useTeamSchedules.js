@@ -6,6 +6,7 @@ export function useTeamSchedules(teamId, view, date) {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refetchKey, setRefetchKey] = useState(0);
   const dateParam = date ? formatDateParam(date) : null;
 
   useEffect(() => {
@@ -30,7 +31,11 @@ export function useTeamSchedules(teamId, view, date) {
     return () => {
       cancelled = true;
     };
-  }, [teamId, view, dateParam]);
+  }, [teamId, view, dateParam, refetchKey]);
 
-  return { schedules, loading, error };
+  function refetch() {
+    setRefetchKey((k) => k + 1);
+  }
+
+  return { schedules, loading, error, refetch };
 }
