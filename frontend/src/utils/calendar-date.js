@@ -8,9 +8,23 @@ function startOfDay(date) {
   return clone;
 }
 
-function addDays(date, n) {
+export function addDays(date, n) {
   const clone = cloneDate(date);
   clone.setDate(clone.getDate() + n);
+  return clone;
+}
+
+export function addWeeks(date, n) {
+  return addDays(date, n * 7);
+}
+
+export function addMonths(date, n) {
+  const clone = cloneDate(date);
+  const originalDay = clone.getDate();
+  clone.setDate(1);
+  clone.setMonth(clone.getMonth() + n);
+  const daysInTargetMonth = new Date(clone.getFullYear(), clone.getMonth() + 1, 0).getDate();
+  clone.setDate(Math.min(originalDay, daysInTargetMonth));
   return clone;
 }
 
@@ -76,4 +90,26 @@ export function formatTimeLabel(date) {
   const hh = String(date.getHours()).padStart(2, '0');
   const mm = String(date.getMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
+}
+
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+export function formatMonthLabel(date) {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+}
+
+export function formatWeekRangeLabel(date) {
+  const days = buildWeekDays(date);
+  const monday = days[0];
+  const sunday = days[6];
+  const format = (d) => {
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${mm}/${dd}(${WEEKDAY_LABELS[d.getDay()]})`;
+  };
+  return `${format(monday)} ~ ${format(sunday)}`;
+}
+
+export function formatDayViewLabel(date) {
+  return `${formatDateParam(date)}(${WEEKDAY_LABELS[date.getDay()]})`;
 }

@@ -5,6 +5,12 @@ import {
   buildDayTimeSlots,
   formatDateParam,
   formatTimeLabel,
+  addDays,
+  addWeeks,
+  addMonths,
+  formatMonthLabel,
+  formatWeekRangeLabel,
+  formatDayViewLabel,
 } from './calendar-date.js'
 
 describe('buildMonthGrid', () => {
@@ -275,5 +281,180 @@ describe('formatTimeLabel', () => {
     const result = formatTimeLabel(new Date(2026, 6, 15, 14, 30))
 
     expect(result).toBe('14:30')
+  })
+})
+
+describe('addDays', () => {
+  it('다음날로 이동한다 (2026-07-15 -> 2026-07-16)', () => {
+    const result = addDays(new Date(2026, 6, 15), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 6, 16])
+  })
+
+  it('이전날로 이동한다 (2026-07-15 -> 2026-07-14)', () => {
+    const result = addDays(new Date(2026, 6, 15), -1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 6, 14])
+  })
+
+  it('월 경계를 넘어 이동한다 (2026-07-31 + 1일 -> 2026-08-01)', () => {
+    const result = addDays(new Date(2026, 6, 31), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 7, 1])
+  })
+
+  it('연 경계를 넘어 이동한다 (2026-12-31 + 1일 -> 2027-01-01)', () => {
+    const result = addDays(new Date(2026, 11, 31), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2027, 0, 1])
+  })
+
+  it('입력받은 Date 객체를 변경하지 않는다', () => {
+    const referenceDate = new Date(2026, 6, 15)
+    const before = referenceDate.getTime()
+
+    addDays(referenceDate, 1)
+
+    expect(referenceDate.getTime()).toBe(before)
+  })
+})
+
+describe('addWeeks', () => {
+  it('한 주 뒤로 이동한다 (2026-07-15 -> 2026-07-22)', () => {
+    const result = addWeeks(new Date(2026, 6, 15), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 6, 22])
+  })
+
+  it('한 주 전으로 이동한다 (2026-07-15 -> 2026-07-08)', () => {
+    const result = addWeeks(new Date(2026, 6, 15), -1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 6, 8])
+  })
+
+  it('월 경계를 넘는 이동을 처리한다 (2026-07-31 + 1주 -> 2026-08-07)', () => {
+    const result = addWeeks(new Date(2026, 6, 31), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 7, 7])
+  })
+
+  it('입력받은 Date 객체를 변경하지 않는다', () => {
+    const referenceDate = new Date(2026, 6, 15)
+    const before = referenceDate.getTime()
+
+    addWeeks(referenceDate, 1)
+
+    expect(referenceDate.getTime()).toBe(before)
+  })
+})
+
+describe('addMonths', () => {
+  it('일반적으로 한 달 전진한다 (2026-07-15 + 1개월 -> 2026-08-15)', () => {
+    const result = addMonths(new Date(2026, 6, 15), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 7, 15])
+  })
+
+  it('일반적으로 한 달 후진한다 (2026-07-15 - 1개월 -> 2026-06-15)', () => {
+    const result = addMonths(new Date(2026, 6, 15), -1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 5, 15])
+  })
+
+  it('월말 오버플로를 그 달의 마지막 날로 클램프한다 - 평년 (2026-01-31 + 1개월 -> 2026-02-28)', () => {
+    const result = addMonths(new Date(2026, 0, 31), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2026, 1, 28])
+  })
+
+  it('월말 오버플로를 그 달의 마지막 날로 클램프한다 - 윤년 (2028-01-31 + 1개월 -> 2028-02-29)', () => {
+    const result = addMonths(new Date(2028, 0, 31), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2028, 1, 29])
+  })
+
+  it('연 경계를 넘어 전진한다 (2026-12-15 + 1개월 -> 2027-01-15)', () => {
+    const result = addMonths(new Date(2026, 11, 15), 1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2027, 0, 15])
+  })
+
+  it('연 경계를 넘어 후진한다 (2026-01-15 - 1개월 -> 2025-12-15)', () => {
+    const result = addMonths(new Date(2026, 0, 15), -1)
+
+    expect([result.getFullYear(), result.getMonth(), result.getDate()]).toEqual([2025, 11, 15])
+  })
+
+  it('입력받은 Date 객체를 변경하지 않는다', () => {
+    const referenceDate = new Date(2026, 6, 15)
+    const before = referenceDate.getTime()
+
+    addMonths(referenceDate, 1)
+
+    expect(referenceDate.getTime()).toBe(before)
+  })
+})
+
+describe('formatMonthLabel', () => {
+  it('일반적인 날짜를 "YYYY년 M월"로 변환한다 (2026-07-15)', () => {
+    const result = formatMonthLabel(new Date(2026, 6, 15))
+
+    expect(result).toBe('2026년 7월')
+  })
+
+  it('월이 한 자리라도 zero-padding하지 않는다 (2026-01-05)', () => {
+    const result = formatMonthLabel(new Date(2026, 0, 5))
+
+    expect(result).toBe('2026년 1월')
+  })
+
+  it('12월을 변환한다 (2026-12-25)', () => {
+    const result = formatMonthLabel(new Date(2026, 11, 25))
+
+    expect(result).toBe('2026년 12월')
+  })
+})
+
+describe('formatWeekRangeLabel', () => {
+  it('수요일(2026-07-15) 기준 주간 범위를 반환한다', () => {
+    const result = formatWeekRangeLabel(new Date(2026, 6, 15))
+
+    expect(result).toBe('07/13(월) ~ 07/19(일)')
+  })
+
+  it('월 경계를 넘는 주 - 금요일(2026-07-31) 기준 주간 범위를 반환한다', () => {
+    const result = formatWeekRangeLabel(new Date(2026, 6, 31))
+
+    expect(result).toBe('07/27(월) ~ 08/02(일)')
+  })
+
+  it('목요일(2026-01-01) 기준 주간 범위를 반환한다 (그 주 월요일은 2025-12-29)', () => {
+    const result = formatWeekRangeLabel(new Date(2026, 0, 1))
+
+    expect(result).toBe('12/29(월) ~ 01/04(일)')
+  })
+})
+
+describe('formatDayViewLabel', () => {
+  it('화요일(2026-07-14)을 변환한다', () => {
+    const result = formatDayViewLabel(new Date(2026, 6, 14))
+
+    expect(result).toBe('2026-07-14(화)')
+  })
+
+  it('목요일(2026-01-01)을 변환한다', () => {
+    const result = formatDayViewLabel(new Date(2026, 0, 1))
+
+    expect(result).toBe('2026-01-01(목)')
+  })
+
+  it('연말 날짜를 변환한다 (2026-12-31)', () => {
+    const referenceDate = new Date(2026, 11, 31)
+    // new Date(2026, 11, 31).getDay() === 4 (목요일)
+    expect(referenceDate.getDay()).toBe(4)
+
+    const result = formatDayViewLabel(referenceDate)
+
+    expect(result).toBe('2026-12-31(목)')
   })
 })

@@ -312,8 +312,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [ ] FE-19, FE-13, FE-09, FE-07
 
 **FE-21. TeamWorkspacePage 뼈대**
-- [ ] 월/주/일 탭 전환.
-- [ ] 뷰/날짜 상태 유지.
+- [x] 월/주/일 탭 전환.
+- [x] 뷰/날짜 상태 유지.
 - 의존성: [ ] FE-16, FE-17, FE-18, FE-09
 
 ---
