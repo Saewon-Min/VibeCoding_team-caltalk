@@ -15,3 +15,7 @@ export function updateSchedule(teamId, scheduleId, payload) {
 export function deleteSchedule(teamId, scheduleId) {
   return apiClient.delete(`/teams/${teamId}/schedules/${scheduleId}`);
 }
+
+export function getScheduleDetail(teamId, scheduleId) {
+  return apiClient.get(`/teams/${teamId}/schedules/${scheduleId}`);
+}
