@@ -432,8 +432,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### Frontend 트랙
 
 **FE-27. change-request.api.js**
-- [ ] `createChangeRequest`, `approveChangeRequest`, `rejectChangeRequest`, `cancelChangeRequest`.
-- [ ] 409 응답을 구분 가능한 형태로 반환.
+- [x] `createChangeRequest`, `approveChangeRequest`, `rejectChangeRequest`, `cancelChangeRequest`.
+- [x] 409 응답을 구분 가능한 형태로 반환.
 - 의존성: [ ] FE-02, [ ] BE-18, BE-20, BE-21, BE-22
 
 **FE-28. ChangeRequestForm**
