@@ -5,7 +5,7 @@ import { postMessage } from '../../api/message.api';
 import { useTeam } from '../../context/TeamContext';
 import ChangeRequestForm from '../change-request/ChangeRequestForm';
 
-export default function ChatInput({ teamId, appendMessage, date }) {
+export default function ChatInput({ teamId, appendMessage, date, targetScheduleId }) {
   const { currentRole } = useTeam();
   const [mode, setMode] = useState('general');
   const [content, setContent] = useState('');
@@ -78,6 +78,7 @@ export default function ChatInput({ teamId, appendMessage, date }) {
           date={date}
           appendMessage={appendMessage}
           onCancel={handleCancelChangeRequest}
+          targetScheduleId={targetScheduleId}
         />
       )}
     </div>

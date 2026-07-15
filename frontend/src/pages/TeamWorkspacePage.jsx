@@ -35,6 +35,7 @@ export default function TeamWorkspacePage() {
   const { teamId } = useParams();
   const [view, setView] = useState('month');
   const [date, setDate] = useState(() => new Date());
+  const [targetScheduleId, setTargetScheduleId] = useState(null);
   const { currentTeam, selectTeam } = useTeam();
   const { schedules, loading, error } = useTeamSchedules(teamId, view, date);
   const {
@@ -60,6 +61,11 @@ export default function TeamWorkspacePage() {
       cancelled = true;
     };
   }, [teamId, currentTeam, selectTeam]);
+
+  function handleScheduleClick(schedule) {
+    setDate(new Date(schedule.startAt));
+    setTargetScheduleId(schedule.id);
+  }
 
   const handlePrev = () => setDate((current) => shiftDate(view, current, -1));
   const handleNext = () => setDate((current) => shiftDate(view, current, 1));
@@ -120,7 +126,7 @@ export default function TeamWorkspacePage() {
               schedules={schedules}
               loading={loading}
               error={error}
-              onScheduleClick={() => {}}
+              onScheduleClick={handleScheduleClick}
               onDateClick={setDate}
             />
           )}
@@ -157,7 +163,12 @@ export default function TeamWorkspacePage() {
           }}
         >
           <ChatHistory messages={chatMessages} loading={chatLoading} error={chatError} />
-          <ChatInput teamId={teamId} appendMessage={appendMessage} date={date} />
+          <ChatInput
+            teamId={teamId}
+            appendMessage={appendMessage}
+            date={date}
+            targetScheduleId={targetScheduleId}
+          />
         </div>
       </div>
     </div>

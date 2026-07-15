@@ -20,7 +20,13 @@ const textareaStyle = {
   resize: 'vertical',
 };
 
-export default function ChangeRequestForm({ teamId, date, appendMessage, onCancel }) {
+export default function ChangeRequestForm({
+  teamId,
+  date,
+  appendMessage,
+  onCancel,
+  targetScheduleId,
+}) {
   const { currentRole } = useTeam();
   const { user } = useAuth();
 
@@ -63,6 +69,12 @@ export default function ChangeRequestForm({ teamId, date, appendMessage, onCance
       cancelled = true;
     };
   }, [teamId, dateParam, currentRole, user.id]);
+
+  useEffect(() => {
+    if (targetScheduleId != null) {
+      setScheduleId(String(targetScheduleId));
+    }
+  }, [targetScheduleId]);
 
   if (currentRole === 'leader') {
     return null;
