@@ -364,8 +364,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [ ] FE-23, FE-07
 
 **FE-25. ChatInput**
-- [ ] 전송 시 `postMessage` 호출, 입력창 초기화, 이력 즉시 반영(SC-12).
-- [ ] 빈 메시지 미전송.
+- [x] 전송 시 `postMessage` 호출, 입력창 초기화, 이력 즉시 반영(SC-12).
+- [x] 빈 메시지 미전송.
 - 의존성: [ ] FE-22, FE-23, FE-07
 
 **FE-26. TeamWorkspacePage 캘린더+채팅 통합**
