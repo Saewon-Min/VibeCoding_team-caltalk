@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { buildMonthGrid, buildWeekDays, buildDayTimeSlots, formatDateParam } from './calendar-date.js'
+import {
+  buildMonthGrid,
+  buildWeekDays,
+  buildDayTimeSlots,
+  formatDateParam,
+  formatTimeLabel,
+} from './calendar-date.js'
 
 describe('buildMonthGrid', () => {
   it('day 1이 일요일인 달은 첫 행 첫 칸이 1일이고 선행 빈 칸이 없다 (2026-02)', () => {
@@ -243,5 +249,31 @@ describe('formatDateParam', () => {
     formatDateParam(referenceDate)
 
     expect(referenceDate.getTime()).toBe(before)
+  })
+})
+
+describe('formatTimeLabel', () => {
+  it('자정(00:00)을 zero-padding하여 변환한다', () => {
+    const result = formatTimeLabel(new Date(2026, 6, 15, 0, 0))
+
+    expect(result).toBe('00:00')
+  })
+
+  it('시/분이 모두 한 자리라서 zero-padding이 필요한 시각을 변환한다 (09:05)', () => {
+    const result = formatTimeLabel(new Date(2026, 6, 15, 9, 5))
+
+    expect(result).toBe('09:05')
+  })
+
+  it('하루의 마지막 시각(23:59)을 변환한다', () => {
+    const result = formatTimeLabel(new Date(2026, 6, 15, 23, 59))
+
+    expect(result).toBe('23:59')
+  })
+
+  it('시/분이 모두 두 자리인 시각을 zero-padding 없이 변환한다 (14:30)', () => {
+    const result = formatTimeLabel(new Date(2026, 6, 15, 14, 30))
+
+    expect(result).toBe('14:30')
   })
 })

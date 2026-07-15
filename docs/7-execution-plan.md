@@ -294,9 +294,9 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [ ] FE-13, FE-09
 
 **FE-16~18. CalendarMonthView / WeekView / DayView**
-- [ ] 월간: 날짜별 일정 표시, 클릭 시 상세 연결(SC-04).
-- [ ] 주간: 시간대별 타임라인 표시(SC-04).
-- [ ] 일간: 시간 단위 표시(SC-04).
+- [x] 월간: 날짜별 일정 표시, 클릭 시 상세 연결(SC-04).
+- [x] 주간: 시간대별 타임라인 표시(SC-04).
+- [x] 일간: 시간 단위 표시(SC-04).
 - 의존성: [ ] FE-14, FE-15, FE-07
 
 **FE-19. ScheduleFormModal (팀장 전용)**
