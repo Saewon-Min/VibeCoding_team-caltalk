@@ -137,7 +137,7 @@ export default function TeamWorkspacePage() {
           }}
         >
           <ChatHistory messages={chatMessages} loading={chatLoading} error={chatError} />
-          <ChatInput teamId={teamId} appendMessage={appendMessage} />
+          <ChatInput teamId={teamId} appendMessage={appendMessage} date={date} />
         </div>
       </div>
     </div>
