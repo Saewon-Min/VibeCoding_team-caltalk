@@ -2,7 +2,9 @@ export default function Button({ children, variant = 'primary', style, ...rest }
   const base = {
     padding: '8px 16px',
     borderRadius: 6,
-    border: '1px solid transparent',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     fontSize: 14,
     cursor: 'pointer',
   };
