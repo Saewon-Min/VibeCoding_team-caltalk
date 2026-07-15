@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import BackButton from '../components/common/BackButton';
 import CalendarMonthView from '../components/calendar/CalendarMonthView';
@@ -8,6 +8,8 @@ import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import { useTeamSchedules } from '../hooks/useTeamSchedules';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useTeam } from '../context/TeamContext';
+import { getMyTeams } from '../api/team.api';
 import {
   addMonths,
   addWeeks,
@@ -33,6 +35,7 @@ export default function TeamWorkspacePage() {
   const { teamId } = useParams();
   const [view, setView] = useState('month');
   const [date, setDate] = useState(() => new Date());
+  const { currentTeam, selectTeam } = useTeam();
   const { schedules, loading, error } = useTeamSchedules(teamId, view, date);
   const {
     messages: chatMessages,
@@ -40,6 +43,23 @@ export default function TeamWorkspacePage() {
     error: chatError,
     appendMessage,
   } = useChatHistory(teamId, date);
+
+  useEffect(() => {
+    if (String(currentTeam?.id) === String(teamId)) {
+      return;
+    }
+    let cancelled = false;
+    getMyTeams()
+      .then((teams) => {
+        if (cancelled) return;
+        const matched = teams.find((team) => String(team.id) === String(teamId));
+        if (matched) selectTeam(matched);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId, currentTeam, selectTeam]);
 
   const handlePrev = () => setDate((current) => shiftDate(view, current, -1));
   const handleNext = () => setDate((current) => shiftDate(view, current, 1));
