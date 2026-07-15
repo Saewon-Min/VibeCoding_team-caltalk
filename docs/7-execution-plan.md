@@ -359,8 +359,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [ ] FE-22, FE-09
 
 **FE-24. ChatHistory / ChatMessageItem**
-- [ ] 일반/변경요청/시스템 메시지가 유형별로 구분 렌더링.
-- [ ] 수정/삭제 UI 요소 없음(BR-06).
+- [x] 일반/변경요청/시스템 메시지가 유형별로 구분 렌더링.
+- [x] 수정/삭제 UI 요소 없음(BR-06).
 - 의존성: [ ] FE-23, FE-07
 
 **FE-25. ChatInput**
