@@ -354,8 +354,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [ ] FE-02, [ ] BE-16, BE-17
 
 **FE-23. useChatHistory 훅**
-- [ ] 날짜 변경 시 해당 일자 메시지 재조회(SC-12).
-- [ ] 과거 날짜 재조회해도 동일 결과(BR-06).
+- [x] 날짜 변경 시 해당 일자 메시지 재조회(SC-12).
+- [x] 과거 날짜 재조회해도 동일 결과(BR-06).
 - 의존성: [ ] FE-22, FE-09
 
 **FE-24. ChatHistory / ChatMessageItem**
