@@ -4,7 +4,10 @@ import BackButton from '../components/common/BackButton';
 import CalendarMonthView from '../components/calendar/CalendarMonthView';
 import CalendarWeekView from '../components/calendar/CalendarWeekView';
 import CalendarDayView from '../components/calendar/CalendarDayView';
+import ChatHistory from '../components/chat/ChatHistory';
+import ChatInput from '../components/chat/ChatInput';
 import { useTeamSchedules } from '../hooks/useTeamSchedules';
+import { useChatHistory } from '../hooks/useChatHistory';
 import {
   addMonths,
   addWeeks,
@@ -31,6 +34,12 @@ export default function TeamWorkspacePage() {
   const [view, setView] = useState('month');
   const [date, setDate] = useState(() => new Date());
   const { schedules, loading, error } = useTeamSchedules(teamId, view, date);
+  const {
+    messages: chatMessages,
+    loading: chatLoading,
+    error: chatError,
+    appendMessage,
+  } = useChatHistory(teamId, date);
 
   const handlePrev = () => setDate((current) => shiftDate(view, current, -1));
   const handleNext = () => setDate((current) => shiftDate(view, current, 1));
@@ -92,6 +101,7 @@ export default function TeamWorkspacePage() {
               loading={loading}
               error={error}
               onScheduleClick={() => {}}
+              onDateClick={setDate}
             />
           )}
           {view === 'week' && (
@@ -101,6 +111,7 @@ export default function TeamWorkspacePage() {
               loading={loading}
               error={error}
               onScheduleClick={() => {}}
+              onDateClick={setDate}
             />
           )}
           {view === 'day' && (
@@ -117,16 +128,16 @@ export default function TeamWorkspacePage() {
           style={{
             width: 280,
             minHeight: 400,
-            border: '1px dashed var(--border)',
+            border: '1px solid var(--border)',
             borderRadius: 8,
+            padding: 12,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text-muted)',
-            fontSize: 13,
+            flexDirection: 'column',
+            gap: 12,
           }}
         >
-          채팅 영역 (Day3 예정)
+          <ChatHistory messages={chatMessages} loading={chatLoading} error={chatError} />
+          <ChatInput teamId={teamId} appendMessage={appendMessage} />
         </div>
       </div>
     </div>

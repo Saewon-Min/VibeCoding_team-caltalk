@@ -20,6 +20,7 @@ export default function CalendarWeekView({
   loading,
   error,
   onScheduleClick,
+  onDateClick,
 }) {
   const days = buildWeekDays(referenceDate);
   const timeSlots = buildDayTimeSlots(referenceDate);
@@ -35,7 +36,22 @@ export default function CalendarWeekView({
           <tr>
             <th></th>
             {days.map((day) => (
-              <th key={formatDateParam(day)}>{formatDayLabel(day)}</th>
+              <th key={formatDateParam(day)}>
+                <button
+                  type="button"
+                  onClick={() => onDateClick(day)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    font: 'inherit',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {formatDayLabel(day)}
+                </button>
+              </th>
             ))}
           </tr>
         </thead>
