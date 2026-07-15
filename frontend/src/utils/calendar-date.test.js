@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMonthGrid, buildWeekDays, buildDayTimeSlots } from './calendar-date.js'
+import { buildMonthGrid, buildWeekDays, buildDayTimeSlots, formatDateParam } from './calendar-date.js'
 
 describe('buildMonthGrid', () => {
   it('day 1이 일요일인 달은 첫 행 첫 칸이 1일이고 선행 빈 칸이 없다 (2026-02)', () => {
@@ -200,6 +200,47 @@ describe('buildDayTimeSlots', () => {
     const before = referenceDate.getTime()
 
     buildDayTimeSlots(referenceDate)
+
+    expect(referenceDate.getTime()).toBe(before)
+  })
+})
+
+describe('formatDateParam', () => {
+  it('월/일이 모두 두 자리인 날짜를 YYYY-MM-DD로 변환한다 (2026-07-15)', () => {
+    const result = formatDateParam(new Date(2026, 6, 15))
+
+    expect(result).toBe('2026-07-15')
+  })
+
+  it('월이 한 자리라서 zero-padding이 필요한 날짜를 변환한다 (2026-01-05)', () => {
+    const result = formatDateParam(new Date(2026, 0, 5))
+
+    expect(result).toBe('2026-01-05')
+  })
+
+  it('일이 한 자리라서 zero-padding이 필요한 날짜를 변환한다 (2026-09-01)', () => {
+    const result = formatDateParam(new Date(2026, 8, 1))
+
+    expect(result).toBe('2026-09-01')
+  })
+
+  it('연말 날짜를 올바르게 변환한다 (2026-12-31)', () => {
+    const result = formatDateParam(new Date(2026, 11, 31))
+
+    expect(result).toBe('2026-12-31')
+  })
+
+  it('연초 날짜를 올바르게 변환한다 (2026-01-01)', () => {
+    const result = formatDateParam(new Date(2026, 0, 1))
+
+    expect(result).toBe('2026-01-01')
+  })
+
+  it('입력받은 Date 객체를 변경하지 않는다', () => {
+    const referenceDate = new Date(2026, 6, 15, 9, 30, 15, 250)
+    const before = referenceDate.getTime()
+
+    formatDateParam(referenceDate)
 
     expect(referenceDate.getTime()).toBe(before)
   })

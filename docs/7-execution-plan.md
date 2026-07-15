@@ -289,8 +289,8 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 - 의존성: [ ] FE-01
 
 **FE-15. useTeamSchedules 훅**
-- [ ] 뷰/날짜 전환 시 자동 재요청.
-- [ ] 로딩/에러 상태 노출.
+- [x] 뷰/날짜 전환 시 자동 재요청.
+- [x] 로딩/에러 상태 노출.
 - 의존성: [ ] FE-13, FE-09
 
 **FE-16~18. CalendarMonthView / WeekView / DayView**
