@@ -350,7 +350,7 @@ Frontend 서브에이전트가 `FE-08`(team.api.js) 작성 중, `TeamListPage`(F
 #### Frontend 트랙
 
 **FE-22. message.api.js**
-- [ ] `getMessagesByDate`, `postMessage`.
+- [x] `getMessagesByDate`, `postMessage`.
 - 의존성: [ ] FE-02, [ ] BE-16, BE-17
 
 **FE-23. useChatHistory 훅**
