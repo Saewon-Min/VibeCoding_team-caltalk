@@ -9,6 +9,7 @@ export default function CalendarMonthView({
   loading,
   error,
   onScheduleClick,
+  onDateClick,
 }) {
   const weeks = buildMonthGrid(referenceDate);
   const schedulesByDate = groupByLocalDate(schedules, (s) => new Date(s.startAt));
@@ -41,15 +42,21 @@ export default function CalendarMonthView({
                       overflowY: 'auto',
                     }}
                   >
-                    <div
+                    <button
+                      type="button"
+                      onClick={() => onDateClick(cell.date)}
                       style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
                         color: cell.isCurrentMonth ? 'var(--text)' : 'var(--text-muted)',
                         fontSize: 13,
                         marginBottom: 4,
+                        cursor: 'pointer',
                       }}
                     >
                       {cell.date.getDate()}
-                    </div>
+                    </button>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {daySchedules.map((schedule) => (
                         <button
